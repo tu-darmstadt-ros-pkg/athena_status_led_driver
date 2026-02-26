@@ -1,0 +1,5 @@
+bool enable            # true to turn on, false to turn off
+float32 brightness     # 0.0–1.0
+float32 direction_deg  # center angle in degrees (0–360, 0 = first LED)
+float32 width_deg      # angular width of the lit arc in degrees
+---
