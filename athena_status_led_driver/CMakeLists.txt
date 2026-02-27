@@ -47,6 +47,7 @@ set(EFFECT_SOURCES
 add_executable(athena_status_led_driver_node
   src/athena_status_led_driver.cpp
   src/spi_transport.cpp
+  src/terminal_transport.cpp
   src/led_ring_controller.cpp
   ${EFFECT_SOURCES}
 )

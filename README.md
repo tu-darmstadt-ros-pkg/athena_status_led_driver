@@ -27,6 +27,11 @@ It uses SPI hardware (via `/dev/spidev3.0`) on the Radxa Zero 3E, rendering a pr
 ros2 run athena_status_led_driver athena_status_led_driver_node
 ```
 
+To simulate effects on your PC, you can use the `simulate` parameter to run a terminal simulation of the LED ring:
+```bash
+ros2 run athena_status_led_driver athena_status_led_driver_node --ros-args -p simulate:=true
+```
+
 ### ROS Interface
 
 *   **Subscribers:**

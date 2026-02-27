@@ -1,5 +1,6 @@
 #include "athena_status_led_driver/athena_status_led_driver.hpp"
 #include "athena_status_led_driver/spi_transport.hpp"
+#include "athena_status_led_driver/terminal_transport.hpp"
 #include "athena_status_led_driver/effects/operating_mode_effect.hpp"
 #include "athena_status_led_driver/effects/battery_pulse_effect.hpp"
 #include "athena_status_led_driver/effects/power_supply_effect.hpp"
@@ -44,23 +45,40 @@ void AthenaStatusLedDriver::setup()
   declare_readonly_parameter("spi_device", spi_device_, "SPI device path");
   declare_readonly_parameter("spi_speed_hz", spi_speed_hz_, "SPI clock frequency in Hz");
   declare_readonly_parameter("update_rate_hz", update_rate_hz_, "LED update rate in Hz");
+  declare_readonly_parameter("simulate", simulate_,
+    "Use terminal visualization instead of SPI hardware");
   declare_reconfigurable_parameter(
-    "global_brightness", std::ref(global_brightness_), "Global brightness (0.0–1.0)",
+    "global_brightness", std::ref(global_brightness_), "Global brightness (0.0 - 1.0)",
     hector::ParameterOptions<double>()
       .setRange(0.0, 1.0, 0.0)
       .onUpdate([this](const double& value) { 
         if (controller_) controller_->setBrightness(static_cast<float>(value)); 
       }));
 
-  // Create transport
-  transport_ = std::make_shared<SpiTransport>(spi_device_, static_cast<uint32_t>(spi_speed_hz_),
-                                              static_cast<uint32_t>(led_count_));
+  // Create transport — terminal visualization when simulating, SPI hardware otherwise
+  if (simulate_)
+  {
+    RCLCPP_INFO(get_logger(), "Simulation mode: rendering LED ring in terminal");
+    transport_ = std::make_shared<TerminalTransport>();
+  }
+  else
+  {
+    transport_ = std::make_shared<SpiTransport>(spi_device_, static_cast<uint32_t>(spi_speed_hz_),
+                                                static_cast<uint32_t>(led_count_));
+  }
 
   if (!transport_->open())
   {
-    auto spi = std::dynamic_pointer_cast<SpiTransport>(transport_);
-    RCLCPP_ERROR(get_logger(), "Failed to open SPI transport at %s: %s",
-                 spi_device_.c_str(), spi ? spi->lastError().c_str() : "unknown");
+    if (simulate_)
+    {
+      RCLCPP_ERROR(get_logger(), "Failed to open terminal transport");
+    }
+    else
+    {
+      auto spi = std::dynamic_pointer_cast<SpiTransport>(transport_);
+      RCLCPP_ERROR(get_logger(), "Failed to open SPI transport at %s: %s",
+                   spi_device_.c_str(), spi ? spi->lastError().c_str() : "unknown");
+    }
   }
 
   // Create controller

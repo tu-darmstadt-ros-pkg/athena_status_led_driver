@@ -40,8 +40,12 @@ public:
     return mode_colors_.count(mode) > 0;
   }
 
+  /// Get the currently active mode string
+  std::string currentMode() const { return current_mode_; }
+
 private:
   bool has_mode_ = false;
+  std::string current_mode_;
   Color current_color_;
   std::unordered_map<std::string, Color> mode_colors_;
 };

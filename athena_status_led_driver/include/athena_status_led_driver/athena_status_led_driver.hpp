@@ -52,6 +52,7 @@ private:
   int spi_speed_hz_ = 6500000;
   double update_rate_hz_ = 30.0;
   double global_brightness_ = 1.0;
+  bool simulate_ = false;
 
   // Controller and transport
   std::shared_ptr<LedTransport> transport_;
