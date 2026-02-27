@@ -16,7 +16,8 @@ namespace athena_status_led_driver
 class PowerSupplyEffect : public LedEffect
 {
 public:
-  static constexpr int NUM_CHASE_LEDS = 4;
+  static constexpr int NUM_LED_GROUPS = 4;
+  static constexpr int NUM_LEDS_PER_GROUP = 4;
   static constexpr double ROTATION_SPEED = 0.25;  // revolutions per second
 
   explicit PowerSupplyEffect(size_t led_count)

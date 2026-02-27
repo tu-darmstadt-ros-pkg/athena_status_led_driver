@@ -18,22 +18,33 @@ void PowerSupplyEffect::render(std::vector<Color>& pixels)
   Color green(0, 255, 0);
 
   // Space the 4 LEDs evenly around the ring
-  double spacing = static_cast<double>(led_count_) / NUM_CHASE_LEDS;
+  double spacing = static_cast<double>(led_count_) / NUM_LED_GROUPS;
 
-  for (int i = 0; i < NUM_CHASE_LEDS; ++i)
+  for (int i = 0; i < NUM_LED_GROUPS; ++i)
   {
     double led_pos = position_ + i * spacing;
     // Wrap position
     while (led_pos >= static_cast<double>(led_count_))
       led_pos -= static_cast<double>(led_count_);
+    while (led_pos < 0.0)
+      led_pos += static_cast<double>(led_count_);
 
-    // Anti-aliased rendering: blend between the two nearest LEDs
-    int idx0 = static_cast<int>(std::floor(led_pos)) % static_cast<int>(led_count_);
-    int idx1 = (idx0 + 1) % static_cast<int>(led_count_);
+    int start_idx = static_cast<int>(std::floor(led_pos)) % static_cast<int>(led_count_);
     float frac = static_cast<float>(led_pos - std::floor(led_pos));
 
-    pixels[idx0] = pixels[idx0].blendOver(green, 1.0f - frac);
-    pixels[idx1] = pixels[idx1].blendOver(green, frac);
+    // The first pixel gets (1 - frac) blending
+    pixels[start_idx] = pixels[start_idx].blendOver(green, 1.0f - frac);
+
+    // The middle pixels get full green
+    for (int j = 1; j < NUM_LEDS_PER_GROUP; ++j)
+    {
+      int idx = (start_idx + j) % static_cast<int>(led_count_);
+      pixels[idx] = pixels[idx].blendOver(green, 1.0f);
+    }
+
+    // The trailing pixel gets frac blending
+    int end_idx = (start_idx + NUM_LEDS_PER_GROUP) % static_cast<int>(led_count_);
+    pixels[end_idx] = pixels[end_idx].blendOver(green, frac);
   }
 }
 

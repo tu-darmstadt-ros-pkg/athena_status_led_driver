@@ -29,6 +29,9 @@ public:
   /// Deactivate the rainbow (called when first status is received)
   void deactivate() { active_ = false; }
 
+  /// Re-activate the rainbow
+  void activate() { active_ = true; }
+
   /// Get current offset (for testing)
   double offset() const { return offset_; }
 

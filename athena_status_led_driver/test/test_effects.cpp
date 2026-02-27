@@ -241,7 +241,7 @@ TEST(PowerSupplyEffectTest, ActiveWhenOnPowerSupply)
   EXPECT_TRUE(effect.isActive());
 }
 
-TEST(PowerSupplyEffectTest, FourGreenLeds)
+TEST(PowerSupplyEffectTest, MultipleLedsPerGroup)
 {
   PowerSupplyEffect effect(LED_COUNT);
   effect.setOnPowerSupply(true);
@@ -255,9 +255,9 @@ TEST(PowerSupplyEffectTest, FourGreenLeds)
     if (p.g > 0)
       green_count++;
   }
-  // 4 chase LEDs, each blended across 2 LEDs = up to 8
-  EXPECT_GE(green_count, 4);
-  EXPECT_LE(green_count, 8);
+  // 4 groups of 4 LEDs, each group blended across up to 5 LEDs = up to 20
+  EXPECT_GE(green_count, PowerSupplyEffect::NUM_LED_GROUPS * PowerSupplyEffect::NUM_LEDS_PER_GROUP);
+  EXPECT_LE(green_count, PowerSupplyEffect::NUM_LED_GROUPS * (PowerSupplyEffect::NUM_LEDS_PER_GROUP + 1));
 }
 
 TEST(PowerSupplyEffectTest, PositionAdvances)
@@ -284,7 +284,7 @@ TEST(PowerSupplyEffectTest, OverlaysOnBase)
     if (p == Color(0, 80, 255))
       blue_count++;
   }
-  EXPECT_GT(blue_count, 100);
+  EXPECT_GE(blue_count, LED_COUNT - PowerSupplyEffect::NUM_LED_GROUPS * (PowerSupplyEffect::NUM_LEDS_PER_GROUP + 1));
 }
 
 // ============================================================================
