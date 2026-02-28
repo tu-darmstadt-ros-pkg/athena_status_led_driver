@@ -19,7 +19,7 @@ class BatteryPulseEffect : public LedEffect
 public:
   static constexpr uint16_t DEFAULT_LOW_CELL_MV = 3800;  // 3.8V
   static constexpr size_t CELLS_PER_BATTERY = 8;
-  static constexpr double PULSE_FREQUENCY_HZ = 1.5;  // pulses per second
+  static constexpr double PULSE_FREQUENCY_HZ = 0.25;  // pulses per second
 
   bool isActive() const override { return low_battery_; }
 
@@ -47,6 +47,8 @@ public:
   double phase() const { return phase_; }
 
 private:
+  static bool isConnected(
+    const std::array<uint16_t, CELLS_PER_BATTERY>& cells);
   static bool hasLowCell(
     const std::array<uint16_t, CELLS_PER_BATTERY>& cells,
     uint16_t threshold_mv);
