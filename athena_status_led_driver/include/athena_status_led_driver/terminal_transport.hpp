@@ -18,17 +18,15 @@ namespace athena_status_led_driver
 class TerminalTransport : public LedTransport
 {
 public:
-
-
   bool open() override;
   void close() override;
   bool isOpen() const override;
-  bool send(const std::vector<Color>& leds) override;
+  bool send( const std::vector<Color> &leds ) override;
 
 private:
   bool open_ = false;
 };
 
-}  // namespace athena_status_led_driver
+} // namespace athena_status_led_driver
 
-#endif  // ATHENA_STATUS_LED_DRIVER_TERMINAL_TRANSPORT_HPP
+#endif // ATHENA_STATUS_LED_DRIVER_TERMINAL_TRANSPORT_HPP

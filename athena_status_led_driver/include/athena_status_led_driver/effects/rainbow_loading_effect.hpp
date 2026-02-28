@@ -16,15 +16,14 @@ namespace athena_status_led_driver
 class RainbowLoadingEffect : public LedEffect
 {
 public:
-  static constexpr double ROTATION_SPEED = 0.3;  // revolutions per second
+  static constexpr double ROTATION_SPEED = 0.3; // revolutions per second
 
-  explicit RainbowLoadingEffect(size_t led_count)
-    : led_count_(led_count) {}
+  explicit RainbowLoadingEffect( size_t led_count ) : led_count_( led_count ) { }
 
   bool isActive() const override { return active_; }
 
-  void update(double dt) override;
-  void render(std::vector<Color>& pixels) override;
+  void update( double dt ) override;
+  void render( std::vector<Color> &pixels ) override;
 
   /// Deactivate the rainbow (called when first status is received)
   void deactivate() { active_ = false; }
@@ -37,13 +36,13 @@ public:
 
 private:
   /// Convert HSV (h in [0,1], s in [0,1], v in [0,1]) to RGB
-  static Color hsvToRgb(float h, float s, float v);
+  static Color hsvToRgb( float h, float s, float v );
 
   size_t led_count_;
   bool active_ = true;
   double offset_ = 0.0;
 };
 
-}  // namespace athena_status_led_driver
+} // namespace athena_status_led_driver
 
-#endif  // ATHENA_STATUS_LED_DRIVER_RAINBOW_LOADING_EFFECT_HPP
+#endif // ATHENA_STATUS_LED_DRIVER_RAINBOW_LOADING_EFFECT_HPP

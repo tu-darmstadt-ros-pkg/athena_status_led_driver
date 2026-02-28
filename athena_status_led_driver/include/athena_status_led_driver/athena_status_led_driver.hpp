@@ -38,13 +38,13 @@ private:
   void onTimer();
 
   /// Subscriber callbacks
-  void onOperatingMode(const std_msgs::msg::String::SharedPtr msg);
-  void onBatteryStatus(const athena_firmware_interface_msgs::msg::BatteryStatus::SharedPtr msg);
+  void onOperatingMode( const std_msgs::msg::String::SharedPtr msg );
+  void onBatteryStatus( const athena_firmware_interface_msgs::msg::BatteryStatus::SharedPtr msg );
 
   /// Service callback
   void onSetSpotLight(
-    const std::shared_ptr<athena_status_led_driver_msgs::srv::SetSpotLight::Request> request,
-    std::shared_ptr<athena_status_led_driver_msgs::srv::SetSpotLight::Response> response);
+      const std::shared_ptr<athena_status_led_driver_msgs::srv::SetSpotLight::Request> request,
+      std::shared_ptr<athena_status_led_driver_msgs::srv::SetSpotLight::Response> response );
 
   // Parameters
   int led_count_ = 110;
@@ -75,6 +75,6 @@ private:
   rclcpp::Time last_tick_time_;
 };
 
-}  // namespace athena_status_led_driver
+} // namespace athena_status_led_driver
 
-#endif  // ATHENA_STATUS_LED_DRIVER_ATHENA_STATUS_LED_DRIVER_HPP
+#endif // ATHENA_STATUS_LED_DRIVER_ATHENA_STATUS_LED_DRIVER_HPP

@@ -17,14 +17,14 @@ namespace athena_status_led_driver
 class BatteryPulseEffect : public LedEffect
 {
 public:
-  static constexpr uint16_t DEFAULT_LOW_CELL_MV = 3800;  // 3.8V
+  static constexpr uint16_t DEFAULT_LOW_CELL_MV = 3800; // 3.8V
   static constexpr size_t CELLS_PER_BATTERY = 8;
-  static constexpr double PULSE_FREQUENCY_HZ = 0.25;  // pulses per second
+  static constexpr double PULSE_FREQUENCY_HZ = 0.25; // pulses per second
 
   bool isActive() const override { return low_battery_; }
 
-  void update(double dt) override;
-  void render(std::vector<Color>& pixels) override;
+  void update( double dt ) override;
+  void render( std::vector<Color> &pixels ) override;
 
   /**
    * @brief Update battery state from a BatteryStatus message.
@@ -35,10 +35,9 @@ public:
    *
    * Low battery triggers when BOTH batteries have at least one cell below threshold.
    */
-  void updateBatteryState(
-    const std::array<uint16_t, CELLS_PER_BATTERY>& cell_voltages_battery1,
-    const std::array<uint16_t, CELLS_PER_BATTERY>& cell_voltages_battery2,
-    uint16_t low_cell_mv = DEFAULT_LOW_CELL_MV);
+  void updateBatteryState( const std::array<uint16_t, CELLS_PER_BATTERY> &cell_voltages_battery1,
+                           const std::array<uint16_t, CELLS_PER_BATTERY> &cell_voltages_battery2,
+                           uint16_t low_cell_mv = DEFAULT_LOW_CELL_MV );
 
   /// Get current low-battery state (for testing)
   bool isLowBattery() const { return low_battery_; }
@@ -47,16 +46,14 @@ public:
   double phase() const { return phase_; }
 
 private:
-  static bool isConnected(
-    const std::array<uint16_t, CELLS_PER_BATTERY>& cells);
-  static bool hasLowCell(
-    const std::array<uint16_t, CELLS_PER_BATTERY>& cells,
-    uint16_t threshold_mv);
+  static bool isConnected( const std::array<uint16_t, CELLS_PER_BATTERY> &cells );
+  static bool hasLowCell( const std::array<uint16_t, CELLS_PER_BATTERY> &cells,
+                          uint16_t threshold_mv );
 
   bool low_battery_ = false;
   double phase_ = 0.0;
 };
 
-}  // namespace athena_status_led_driver
+} // namespace athena_status_led_driver
 
-#endif  // ATHENA_STATUS_LED_DRIVER_BATTERY_PULSE_EFFECT_HPP
+#endif // ATHENA_STATUS_LED_DRIVER_BATTERY_PULSE_EFFECT_HPP

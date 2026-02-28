@@ -24,21 +24,18 @@ public:
 
   bool isActive() const override { return has_mode_; }
 
-  void update(double /*dt*/) override {}
+  void update( double /*dt*/ ) override { }
 
-  void render(std::vector<Color>& pixels) override;
+  void render( std::vector<Color> &pixels ) override;
 
   /// Set the current operating mode. Unknown modes are ignored.
-  void setMode(const std::string& mode);
+  void setMode( const std::string &mode );
 
   /// Get the current color (for testing)
   Color currentColor() const { return current_color_; }
 
   /// Check if a mode string is recognized
-  bool isModeValid(const std::string& mode) const
-  {
-    return mode_colors_.count(mode) > 0;
-  }
+  bool isModeValid( const std::string &mode ) const { return mode_colors_.count( mode ) > 0; }
 
   /// Get the currently active mode string
   std::string currentMode() const { return current_mode_; }
@@ -50,6 +47,6 @@ private:
   std::unordered_map<std::string, Color> mode_colors_;
 };
 
-}  // namespace athena_status_led_driver
+} // namespace athena_status_led_driver
 
-#endif  // ATHENA_STATUS_LED_DRIVER_OPERATING_MODE_EFFECT_HPP
+#endif // ATHENA_STATUS_LED_DRIVER_OPERATING_MODE_EFFECT_HPP

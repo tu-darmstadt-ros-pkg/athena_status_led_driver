@@ -3,9 +3,9 @@
 
 #include "athena_status_led_driver/led_transport.hpp"
 
+#include <cstdint>
 #include <string>
 #include <vector>
-#include <cstdint>
 
 // Forward-declare the ws2812b handle (C library)
 extern "C" {
@@ -28,16 +28,16 @@ public:
    * @param speed_hz    SPI clock frequency (~6500000 for single packing)
    * @param led_count   number of LEDs on the strip
    */
-  SpiTransport(const std::string& device, uint32_t speed_hz, uint32_t led_count);
+  SpiTransport( const std::string &device, uint32_t speed_hz, uint32_t led_count );
   ~SpiTransport() override;
 
   bool open() override;
   void close() override;
   bool isOpen() const override;
-  bool send(const std::vector<Color>& leds) override;
+  bool send( const std::vector<Color> &leds ) override;
 
   /// Diagnostic: reason for the last open() failure
-  const std::string& lastError() const { return last_error_; }
+  const std::string &lastError() const { return last_error_; }
 
 private:
   std::string device_;
@@ -51,6 +51,6 @@ private:
   std::vector<uint8_t> spi_buffer_;
 };
 
-}  // namespace athena_status_led_driver
+} // namespace athena_status_led_driver
 
-#endif  // ATHENA_STATUS_LED_DRIVER_SPI_TRANSPORT_HPP
+#endif // ATHENA_STATUS_LED_DRIVER_SPI_TRANSPORT_HPP

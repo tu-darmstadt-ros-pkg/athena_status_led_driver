@@ -22,21 +22,21 @@ namespace athena_status_led_driver
 class LedRingController
 {
 public:
-  LedRingController(size_t led_count, std::shared_ptr<LedTransport> transport);
+  LedRingController( size_t led_count, std::shared_ptr<LedTransport> transport );
 
   /// Add an effect. Effects are rendered in the order they are added.
-  void addEffect(std::shared_ptr<LedEffect> effect);
+  void addEffect( std::shared_ptr<LedEffect> effect );
 
   /// Set global brightness (0.0–1.0)
-  void setBrightness(float brightness);
+  void setBrightness( float brightness );
 
   float brightness() const;
 
   /// Update all effects, render the frame, and send it
-  void tick(double dt);
+  void tick( double dt );
 
   /// Get current pixel buffer (for testing)
-  const std::vector<Color>& pixels() const;
+  const std::vector<Color> &pixels() const;
 
   /// Get the transport (for testing)
   std::shared_ptr<LedTransport> transport() const;
@@ -49,6 +49,6 @@ private:
   float brightness_ = 1.0f;
 };
 
-}  // namespace athena_status_led_driver
+} // namespace athena_status_led_driver
 
-#endif  // ATHENA_STATUS_LED_DRIVER_LED_RING_CONTROLLER_HPP
+#endif // ATHENA_STATUS_LED_DRIVER_LED_RING_CONTROLLER_HPP

@@ -18,21 +18,20 @@ class PowerSupplyEffect : public LedEffect
 public:
   static constexpr int NUM_LED_GROUPS = 4;
   static constexpr int NUM_LEDS_PER_GROUP = 4;
-  static constexpr double ROTATION_SPEED = 0.25;  // revolutions per second
+  static constexpr double ROTATION_SPEED = 0.25; // revolutions per second
 
-  explicit PowerSupplyEffect(size_t led_count)
-    : led_count_(led_count) {}
+  explicit PowerSupplyEffect( size_t led_count ) : led_count_( led_count ) { }
 
   bool isActive() const override { return on_power_supply_; }
 
-  void update(double dt) override;
-  void render(std::vector<Color>& pixels) override;
+  void update( double dt ) override;
+  void render( std::vector<Color> &pixels ) override;
 
   /// Set power source state
-  void setOnPowerSupply(bool on_power_supply)
+  void setOnPowerSupply( bool on_power_supply )
   {
     on_power_supply_ = on_power_supply;
-    if (!on_power_supply)
+    if ( !on_power_supply )
       position_ = 0.0;
   }
 
@@ -45,6 +44,6 @@ private:
   double position_ = 0.0;
 };
 
-}  // namespace athena_status_led_driver
+} // namespace athena_status_led_driver
 
-#endif  // ATHENA_STATUS_LED_DRIVER_POWER_SUPPLY_EFFECT_HPP
+#endif // ATHENA_STATUS_LED_DRIVER_POWER_SUPPLY_EFFECT_HPP

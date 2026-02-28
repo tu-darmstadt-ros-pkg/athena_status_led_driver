@@ -27,9 +27,9 @@ public:
   virtual bool isOpen() const = 0;
 
   /// Send a frame of LED colors. Returns true on success.
-  virtual bool send(const std::vector<Color>& leds) = 0;
+  virtual bool send( const std::vector<Color> &leds ) = 0;
 };
 
-}  // namespace athena_status_led_driver
+} // namespace athena_status_led_driver
 
-#endif  // ATHENA_STATUS_LED_DRIVER_LED_TRANSPORT_HPP
+#endif // ATHENA_STATUS_LED_DRIVER_LED_TRANSPORT_HPP
