@@ -17,8 +17,8 @@ void BatteryPulseEffect::render( std::vector<Color> &pixels )
 
   // Only positive part of sine wave so we have half the time no pulse
   double pulse = std::max( 0.0, std::sin( phase_ ) );
-  // Scale the pulse intensity (0.0 to 0.8 to avoid full washout)
-  float alpha = static_cast<float>( pulse ) * 0.8f;
+  // Scale the pulse intensity to 1.2 and cap at 1.0 to remain at full brightness for a moment
+  float alpha = std::min( 1.0f, static_cast<float>( pulse ) * 1.2f );
 
   Color red( 255, 0, 0 );
   for ( auto &pixel : pixels ) pixel = pixel.blendOver( red, alpha );
