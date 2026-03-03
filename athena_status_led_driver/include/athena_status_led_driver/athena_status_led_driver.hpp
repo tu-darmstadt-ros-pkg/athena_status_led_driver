@@ -30,12 +30,12 @@ public:
   AthenaStatusLedDriver();
   ~AthenaStatusLedDriver() override;
 
+  // Run update logic for animations etc.
+  void update();
+
 private:
   void setup();
   void cleanUp();
-
-  /// Timer callback for animation updates
-  void onTimer();
 
   /// Subscriber callbacks
   void onOperatingMode( const std_msgs::msg::String::SharedPtr msg );
@@ -50,7 +50,6 @@ private:
   int led_count_ = 110;
   std::string spi_device_ = "/dev/spidev3.0";
   int spi_speed_hz_ = 6500000;
-  double update_rate_hz_ = 30.0;
   double global_brightness_ = 1.0;
   bool simulate_ = false;
 

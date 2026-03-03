@@ -17,17 +17,7 @@ AthenaStatusLedDriver::AthenaStatusLedDriver() : Node( "athena_status_led_driver
 {
   setup();
 
-  // Validate update rate — fall back to 30 Hz if invalid
-  if ( update_rate_hz_ <= 0.0 ) {
-    RCLCPP_WARN( get_logger(), "Invalid update_rate_hz (%.1f), falling back to 30.0 Hz",
-                 update_rate_hz_ );
-    update_rate_hz_ = 30.0;
-  }
-
   last_tick_time_ = now();
-  auto period = std::chrono::duration<double>( 1.0 / update_rate_hz_ );
-  timer_ = create_wall_timer( std::chrono::duration_cast<std::chrono::nanoseconds>( period ),
-                              std::bind( &AthenaStatusLedDriver::onTimer, this ) );
 }
 
 AthenaStatusLedDriver::~AthenaStatusLedDriver()
@@ -42,7 +32,6 @@ void AthenaStatusLedDriver::setup()
   declare_readonly_parameter( "led_count", led_count_, "Number of LEDs on the ring" );
   declare_readonly_parameter( "spi_device", spi_device_, "SPI device path" );
   declare_readonly_parameter( "spi_speed_hz", spi_speed_hz_, "SPI clock frequency in Hz" );
-  declare_readonly_parameter( "update_rate_hz", update_rate_hz_, "LED update rate in Hz" );
   declare_readonly_parameter( "simulate", simulate_,
                               "Use terminal visualization instead of SPI hardware" );
   declare_reconfigurable_parameter(
@@ -126,7 +115,7 @@ void AthenaStatusLedDriver::cleanUp()
   }
 }
 
-void AthenaStatusLedDriver::onTimer()
+void AthenaStatusLedDriver::update()
 {
   auto current_time = now();
   double dt = ( current_time - last_tick_time_ ).seconds();
@@ -185,11 +174,13 @@ void AthenaStatusLedDriver::onSetSpotLight(
 int main( int argc, char *argv[] )
 {
   rclcpp::init( argc, argv );
-  auto queue = std::make_unique<rclcpp::experimental::executors::SimpleEventsQueue>();
-  auto executor = rclcpp::experimental::executors::EventsExecutor::make_unique();
   auto node = std::make_shared<athena_status_led_driver::AthenaStatusLedDriver>();
-  executor->add_node( node );
-  executor->spin();
+
+  while ( rclcpp::ok() ) {
+    rclcpp::spin_some( node );
+    node->update();
+    std::this_thread::sleep_for( std::chrono::milliseconds( 33 ) );
+  }
   rclcpp::shutdown();
   return 0;
 }
