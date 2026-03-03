@@ -171,7 +171,7 @@ void AthenaStatusLedDriver::onBatteryStatus(
 
 void AthenaStatusLedDriver::onSetSpotLight(
     const std::shared_ptr<athena_status_led_driver_msgs::srv::SetSpotLight::Request> request,
-    std::shared_ptr<athena_status_led_driver_msgs::srv::SetSpotLight::Response> response )
+    std::shared_ptr<athena_status_led_driver_msgs::srv::SetSpotLight::Response> )
 {
   RCLCPP_INFO( get_logger(), "SetSpotLight: enable=%d, brightness=%.2f, dir=%.1f°, width=%.1f°",
                request->enable, request->brightness, request->direction_deg, request->width_deg );
@@ -185,8 +185,11 @@ void AthenaStatusLedDriver::onSetSpotLight(
 int main( int argc, char *argv[] )
 {
   rclcpp::init( argc, argv );
-  rclcpp::spin(
-      std::make_shared<athena_status_led_driver::AthenaStatusLedDriver>()->get_node_base_interface() );
+  auto queue = std::make_unique<rclcpp::experimental::executors::SimpleEventsQueue>();
+  auto executor = rclcpp::experimental::executors::EventsExecutor::make_unique();
+  auto node = std::make_shared<athena_status_led_driver::AthenaStatusLedDriver>();
+  executor->add_node( node );
+  executor->spin();
   rclcpp::shutdown();
   return 0;
 }
