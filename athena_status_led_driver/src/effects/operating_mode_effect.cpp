@@ -15,7 +15,7 @@ void OperatingModeEffect::render( std::vector<Color> &pixels )
 {
   if ( !has_mode_ )
     return;
-  for ( size_t i = 0; i < pixels.size(); ++i ) pixels[i] = current_color_;
+  std::fill( pixels.begin(), pixels.end(), current_color_.scaled( BRIGHTNESS ) );
 }
 
 void OperatingModeEffect::setMode( const std::string &mode )

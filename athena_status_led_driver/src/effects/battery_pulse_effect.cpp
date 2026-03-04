@@ -20,7 +20,7 @@ void BatteryPulseEffect::render( std::vector<Color> &pixels )
   // Scale the pulse intensity to 1.2 and cap at 1.0 to remain at full brightness for a moment
   float alpha = std::min( 1.0f, static_cast<float>( pulse ) * 1.2f );
 
-  Color red( 255, 0, 0 );
+  Color red = Color( 255, 0, 0 ).scaled( BRIGHTNESS );
   for ( auto &pixel : pixels ) pixel = pixel.blendOver( red, alpha );
 }
 

@@ -82,9 +82,9 @@ bool TerminalTransport::send( const std::vector<Color> &leds )
 
     if ( x >= 0 && x < grid_width && y >= 0 && y < grid_height ) {
       grid[y][x].occupied = true;
-      grid[y][x].r = leds[i].r;
-      grid[y][x].g = leds[i].g;
-      grid[y][x].b = leds[i].b;
+      grid[y][x].r = std::min( 255, leds[i].r * 4 );
+      grid[y][x].g = std::min( 255, leds[i].g * 4 );
+      grid[y][x].b = std::min( 255, leds[i].b * 4 );
     }
   }
 

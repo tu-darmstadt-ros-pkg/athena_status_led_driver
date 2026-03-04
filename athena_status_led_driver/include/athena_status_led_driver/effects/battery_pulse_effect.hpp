@@ -20,6 +20,7 @@ public:
   static constexpr uint16_t DEFAULT_LOW_CELL_MV = 3700; // 3.7V
   static constexpr size_t CELLS_PER_BATTERY = 8;
   static constexpr double PULSE_FREQUENCY_HZ = 0.25; // pulses per second
+  static constexpr double BRIGHTNESS = 0.2;
 
   bool isActive() const override { return low_battery_; }
 

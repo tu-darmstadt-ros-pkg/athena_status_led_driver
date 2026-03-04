@@ -16,6 +16,7 @@ namespace athena_status_led_driver
 class RainbowLoadingEffect : public LedEffect
 {
 public:
+  static constexpr double BRIGHTNESS = 0.1;
   static constexpr double ROTATION_SPEED = 0.3; // revolutions per second
 
   explicit RainbowLoadingEffect( size_t led_count ) : led_count_( led_count ) { }

@@ -18,6 +18,7 @@ class PowerSupplyEffect : public LedEffect
 public:
   static constexpr int NUM_LED_GROUPS = 4;
   static constexpr int NUM_LEDS_PER_GROUP = 4;
+  static constexpr double BRIGHTNESS = 0.2;
   static constexpr double ROTATION_SPEED = 0.25; // revolutions per second
 
   explicit PowerSupplyEffect( size_t led_count ) : led_count_( led_count ) { }
