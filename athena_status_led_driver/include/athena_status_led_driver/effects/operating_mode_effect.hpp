@@ -20,6 +20,8 @@ namespace athena_status_led_driver
 class OperatingModeEffect : public LedEffect
 {
 public:
+  static constexpr double BRIGHTNESS = 0.1;
+
   OperatingModeEffect();
 
   bool isActive() const override { return has_mode_; }

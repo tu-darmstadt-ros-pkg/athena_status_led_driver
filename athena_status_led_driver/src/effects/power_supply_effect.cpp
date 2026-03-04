@@ -15,7 +15,7 @@ void PowerSupplyEffect::render( std::vector<Color> &pixels )
   if ( !on_power_supply_ || led_count_ == 0 )
     return;
 
-  Color green( 0, 255, 0 );
+  Color green = Color( 0, 255, 0 ).scaled( BRIGHTNESS );
 
   // Space the 4 LEDs evenly around the ring
   double spacing = static_cast<double>( led_count_ ) / NUM_LED_GROUPS;

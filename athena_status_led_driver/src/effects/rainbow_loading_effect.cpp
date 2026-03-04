@@ -21,7 +21,7 @@ void RainbowLoadingEffect::render( std::vector<Color> &pixels )
         static_cast<float>( i ) / static_cast<float>( led_count_ ) + static_cast<float>( offset_ );
     if ( hue >= 1.0f )
       hue -= 1.0f;
-    pixels[i] = hsvToRgb( hue, 1.0f, 1.0f );
+    pixels[i] = hsvToRgb( hue, 1.0f, 1.0f ).scaled( BRIGHTNESS );
   }
 }
 

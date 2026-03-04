@@ -8,13 +8,12 @@ void SpotLightEffect::render( std::vector<Color> &pixels )
   if ( !enabled_ || led_count_ == 0 )
     return;
 
-  Color white( 255, 255, 255 );
-  float scaled_brightness = brightness_;
+  Color white = Color( 255, 255, 255 ).scaled( brightness_ );
 
   for ( size_t i = 0; i < pixels.size(); ++i ) {
     float alpha = ledAlpha( i );
     if ( alpha > 0.0f )
-      pixels[i] = pixels[i].blendOver( white, alpha * scaled_brightness );
+      pixels[i] = pixels[i].blendOver( white, alpha );
   }
 }
 
