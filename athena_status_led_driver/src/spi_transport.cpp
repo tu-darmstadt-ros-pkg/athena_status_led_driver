@@ -13,7 +13,7 @@ namespace athena_status_led_driver
 
 static constexpr uint32_t PACKING = WS2812B_PACKING_SINGLE;
 static constexpr uint32_t PREFIX_LEN = 128;
-static constexpr uint32_t SUFFIX_LEN = 4;
+static constexpr uint32_t SUFFIX_LEN = 128;
 
 SpiTransport::SpiTransport( const std::string &device, uint32_t speed_hz, uint32_t led_count )
     : device_( device ), speed_hz_( speed_hz ), led_count_( led_count )
