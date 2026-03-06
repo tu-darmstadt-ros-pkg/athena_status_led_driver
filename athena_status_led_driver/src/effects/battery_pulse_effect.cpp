@@ -34,18 +34,20 @@ void BatteryPulseEffect::updateBatteryState(
   bool bat2_low = hasLowCell( cell_voltages_battery2, low_cell_mv );
   if ( bat1_connected && bat2_connected ) {
     low_battery_ = bat1_low && bat2_low;
-  } else if ( !bat1_connected ) {
-    low_battery_ = bat2_low;
+  } else if ( !bat1_connected && !bat2_connected ) {
+    low_battery_ = false;
   } else if ( !bat2_connected ) {
     low_battery_ = bat1_low;
   } else {
-    low_battery_ = false;
+    low_battery_ = bat2_low;
   }
 }
 
 bool BatteryPulseEffect::isConnected( const std::array<uint16_t, CELLS_PER_BATTERY> &cells )
 {
-  return std::any_of( cells.begin(), cells.end(), []( uint16_t v ) { return v > 0; } );
+  return std::count_if( cells.begin(), cells.end(), []( uint16_t v ) {
+           return v >= 2800 && v <= 4500;
+         } ) >= static_cast<int>( cells.size() / 2 );
 }
 
 bool BatteryPulseEffect::hasLowCell( const std::array<uint16_t, CELLS_PER_BATTERY> &cells,

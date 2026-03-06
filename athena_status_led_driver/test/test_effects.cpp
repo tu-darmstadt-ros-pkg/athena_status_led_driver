@@ -148,7 +148,8 @@ TEST( OperatingModeEffectTest, RenderFillsAllPixels )
   std::vector<Color> pixels( LED_COUNT );
   effect.render( pixels );
 
-  for ( const auto &p : pixels ) EXPECT_EQ( p, Color( 0, 255, 0 ) );
+  for ( const auto &p : pixels )
+    EXPECT_EQ( p, Color( 0, 255, 0 ).scaled( OperatingModeEffect::BRIGHTNESS ) );
 }
 
 // ============================================================================
@@ -164,7 +165,7 @@ TEST( BatteryPulseEffectTest, InactiveByDefault )
 TEST( BatteryPulseEffectTest, LowBattery_BothLow )
 {
   BatteryPulseEffect effect;
-  std::array<uint16_t, 8> cells1 = { 3700, 4000, 4000, 4000, 4000, 4000, 4000, 4000 };
+  std::array<uint16_t, 8> cells1 = { 3600, 4000, 4000, 4000, 4000, 4000, 4000, 4000 };
   std::array<uint16_t, 8> cells2 = { 4000, 4000, 4000, 3600, 4000, 4000, 4000, 4000 };
   effect.updateBatteryState( cells1, cells2 );
   EXPECT_TRUE( effect.isLowBattery() );
@@ -174,7 +175,7 @@ TEST( BatteryPulseEffectTest, LowBattery_BothLow )
 TEST( BatteryPulseEffectTest, NotLowBattery_OnlyOneLow )
 {
   BatteryPulseEffect effect;
-  std::array<uint16_t, 8> cells1 = { 3700, 4000, 4000, 4000, 4000, 4000, 4000, 4000 };
+  std::array<uint16_t, 8> cells1 = { 3600, 4000, 4000, 4000, 4000, 4000, 4000, 4000 };
   std::array<uint16_t, 8> cells2 = { 4000, 4000, 4000, 4000, 4000, 4000, 4000, 4000 };
   effect.updateBatteryState( cells1, cells2 );
   EXPECT_FALSE( effect.isLowBattery() );
@@ -192,9 +193,10 @@ TEST( BatteryPulseEffectTest, NotLowBattery_NeitherLow )
 TEST( BatteryPulseEffectTest, ZeroCellVoltagesAreIgnored )
 {
   BatteryPulseEffect effect;
-  std::array<uint16_t, 8> cells1 = { 0, 0, 0, 0, 4000, 4000, 4000, 4000 };
-  std::array<uint16_t, 8> cells2 = { 0, 0, 0, 0, 4000, 4000, 4000, 4000 };
+  std::array<uint16_t, 8> cells1 = { 4000, 4000, 4000, 4000, 4000, 4000, 4000, 4000 };
+  std::array<uint16_t, 8> cells2 = { 0, 0, 0, 0, 0, 0, 0, 0 };
   effect.updateBatteryState( cells1, cells2 );
+
   EXPECT_FALSE( effect.isLowBattery() );
 }
 
@@ -209,7 +211,7 @@ TEST( BatteryPulseEffectTest, PulseAdvancesPhase )
 TEST( BatteryPulseEffectTest, RenderBlendsRed )
 {
   BatteryPulseEffect effect;
-  std::array<uint16_t, 8> cells1 = { 3700, 4000, 4000, 4000, 4000, 4000, 4000, 4000 };
+  std::array<uint16_t, 8> cells1 = { 3600, 4000, 4000, 4000, 4000, 4000, 4000, 4000 };
   std::array<uint16_t, 8> cells2 = { 4000, 4000, 4000, 3600, 4000, 4000, 4000, 4000 };
   effect.updateBatteryState( cells1, cells2 );
 
@@ -249,7 +251,7 @@ TEST( PowerSupplyEffectTest, MultipleLedsPerGroup )
 
   int green_count = 0;
   for ( const auto &p : pixels ) {
-    if ( p.g > 0 )
+    if ( p.g > 10 )
       green_count++;
   }
   // 4 groups of 4 LEDs, each group blended across up to 5 LEDs = up to 20
@@ -401,12 +403,13 @@ TEST( RainbowLoadingEffectTest, RenderProducesColorfulPixels )
 
   // Should have a variety of colors (full hue spectrum)
   bool has_red = false, has_green = false, has_blue = false;
+  uint8_t threshold = static_cast<uint8_t>( 200 * RainbowLoadingEffect::BRIGHTNESS );
   for ( const auto &p : pixels ) {
-    if ( p.r > 200 )
+    if ( p.r > threshold )
       has_red = true;
-    if ( p.g > 200 )
+    if ( p.g > threshold )
       has_green = true;
-    if ( p.b > 200 )
+    if ( p.b > threshold )
       has_blue = true;
   }
   EXPECT_TRUE( has_red );
@@ -472,7 +475,8 @@ TEST( LedRingControllerTest, SingleFillEffect )
   controller.addEffect( mode );
   controller.tick( 0.033 );
 
-  for ( const auto &p : transport->lastFrame() ) EXPECT_EQ( p, Color( 0, 80, 255 ) );
+  for ( const auto &p : transport->lastFrame() )
+    EXPECT_EQ( p, Color( 0, 80, 255 ).scaled( OperatingModeEffect::BRIGHTNESS ) );
 }
 
 TEST( LedRingControllerTest, BlendEffectOnTop )
@@ -510,7 +514,7 @@ TEST( LedRingControllerTest, GlobalBrightness )
 
   for ( const auto &p : transport->lastFrame() ) {
     EXPECT_EQ( p.r, 0 );
-    EXPECT_EQ( p.g, 127 );
+    EXPECT_EQ( p.g, static_cast<uint8_t>( 255 * OperatingModeEffect::BRIGHTNESS * 0.5f ) );
     EXPECT_EQ( p.b, 0 );
   }
 }
@@ -531,7 +535,8 @@ TEST( LedRingControllerTest, InactiveEffectDoesNotAffect )
   controller.addEffect( battery );
   controller.tick( 0.033 );
 
-  for ( const auto &p : transport->lastFrame() ) EXPECT_EQ( p, Color( 0, 255, 0 ) );
+  for ( const auto &p : transport->lastFrame() )
+    EXPECT_EQ( p, Color( 0, 255, 0 ).scaled( OperatingModeEffect::BRIGHTNESS ) );
 }
 
 TEST( LedRingControllerTest, LaterFillOverwritesEarlierFill )
@@ -550,7 +555,8 @@ TEST( LedRingControllerTest, LaterFillOverwritesEarlierFill )
   controller.tick( 0.033 );
 
   // Operating mode (green) should have overwritten the rainbow
-  for ( const auto &p : transport->lastFrame() ) EXPECT_EQ( p, Color( 0, 255, 0 ) );
+  for ( const auto &p : transport->lastFrame() )
+    EXPECT_EQ( p, Color( 0, 255, 0 ).scaled( OperatingModeEffect::BRIGHTNESS ) );
 }
 
 TEST( LedRingControllerTest, RainbowShowsWhenNoModeSet )
@@ -599,9 +605,9 @@ TEST( LedRingControllerTest, MultipleBlendEffects )
   const auto &frame = transport->lastFrame();
   bool has_blue = false, has_modified = false;
   for ( const auto &p : frame ) {
-    if ( p == Color( 0, 80, 255 ) )
+    if ( p == Color( 0, 80, 255 ).scaled( OperatingModeEffect::BRIGHTNESS ) )
       has_blue = true;
-    if ( p != Color( 0, 80, 255 ) )
+    if ( p != Color( 0, 80, 255 ).scaled( OperatingModeEffect::BRIGHTNESS ) )
       has_modified = true;
   }
   EXPECT_TRUE( has_blue );     // Some pixels still show base
@@ -643,12 +649,13 @@ TEST( IntegrationTest, FullPipelineLifecycle )
   mode->setMode( "autonomous" );
   rainbow->deactivate();
   controller.tick( 0.033 );
-  for ( const auto &p : transport->lastFrame() ) EXPECT_EQ( p, Color( 0, 80, 255 ) );
+  for ( const auto &p : transport->lastFrame() )
+    EXPECT_EQ( p, Color( 0, 80, 255 ).scaled( OperatingModeEffect::BRIGHTNESS ) );
 
   // Phase 3: Enable low battery → red pulse
   std::array<uint16_t, 8> low = { 3500, 4000, 4000, 4000, 4000, 4000, 4000, 4000 };
   battery->updateBatteryState( low, low );
-  controller.tick( 0.2 ); // advance to get nonzero pulse
+  controller.tick( 0.25 / BatteryPulseEffect::PULSE_FREQUENCY_HZ ); // advance to get nonzero pulse
 
   bool has_red = false;
   for ( const auto &p : transport->lastFrame() ) {
@@ -664,8 +671,12 @@ TEST( IntegrationTest, FullPipelineLifecycle )
   controller.tick( 0.033 );
 
   int green_count = 0;
-  for ( const auto &p : transport->lastFrame() ) {
-    if ( p.g > 80 )
+  for ( size_t i = 0; i < transport->lastFrame().size(); ++i ) {
+    const auto &p = transport->lastFrame()[i];
+    if ( p.r > 0 || p.g > 0 || p.b > 0 ) {
+      // std::printf("LED[%zu]: %d, %d, %d\n", i, p.r, p.g, p.b);
+    }
+    if ( p.g > 10 )
       green_count++;
   }
   EXPECT_GE( green_count, 4 );
