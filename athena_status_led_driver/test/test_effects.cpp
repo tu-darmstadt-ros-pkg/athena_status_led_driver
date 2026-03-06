@@ -166,8 +166,10 @@ TEST( BatteryPulseEffectTest, InactiveByDefault )
 TEST( BatteryPulseEffectTest, LowBattery_BothLow )
 {
   BatteryPulseEffect effect;
-  std::array<uint16_t, 8> cells1 = { 3600, 4000, 4000, 4000, 4000, 4000, 4000, 4000 };
-  std::array<uint16_t, 8> cells2 = { 4000, 4000, 4000, 3600, 4000, 4000, 4000, 4000 };
+  uint16_t low = BatteryPulseEffect::DEFAULT_LOW_CELL_MV - 1;
+  uint16_t high = 4000;
+  std::array<uint16_t, 8> cells1 = { low, high, high, high, high, high, high, high };
+  std::array<uint16_t, 8> cells2 = { high, high, high, low, high, high, high, high };
   effect.updateBatteryState( cells1, cells2 );
   EXPECT_TRUE( effect.isLowBattery() );
   EXPECT_TRUE( effect.isActive() );
@@ -176,8 +178,10 @@ TEST( BatteryPulseEffectTest, LowBattery_BothLow )
 TEST( BatteryPulseEffectTest, NotLowBattery_OnlyOneLow )
 {
   BatteryPulseEffect effect;
-  std::array<uint16_t, 8> cells1 = { 3600, 4000, 4000, 4000, 4000, 4000, 4000, 4000 };
-  std::array<uint16_t, 8> cells2 = { 4000, 4000, 4000, 4000, 4000, 4000, 4000, 4000 };
+  uint16_t low = BatteryPulseEffect::DEFAULT_LOW_CELL_MV - 1;
+  uint16_t high = 4000;
+  std::array<uint16_t, 8> cells1 = { low, high, high, high, high, high, high, high };
+  std::array<uint16_t, 8> cells2 = { high, high, high, high, high, high, high, high };
   effect.updateBatteryState( cells1, cells2 );
   EXPECT_FALSE( effect.isLowBattery() );
 }
@@ -201,10 +205,17 @@ TEST( BatteryPulseEffectTest, ZeroCellVoltagesAreIgnored )
   EXPECT_FALSE( effect.isLowBattery() );
 }
 
-TEST( BatteryPulseEffectTest, PulseAdvancesPhase )
+TEST( BatteryPulseEffectTest, PulseAdvancesPhaseOnlyIfLowBattery )
 {
   BatteryPulseEffect effect;
+  uint16_t low = BatteryPulseEffect::DEFAULT_LOW_CELL_MV - 1;
+  uint16_t high = 4000;
+  std::array<uint16_t, 8> cells1 = { low, high, high, high, high, high, high, high };
+  std::array<uint16_t, 8> cells2 = { high, high, high, low, high, high, high, high };
   double before = effect.phase();
+  effect.update( 0.1 );
+  EXPECT_EQ( effect.phase(), before );
+  effect.updateBatteryState( cells1, cells2 );
   effect.update( 0.1 );
   EXPECT_GT( effect.phase(), before );
 }
@@ -212,8 +223,10 @@ TEST( BatteryPulseEffectTest, PulseAdvancesPhase )
 TEST( BatteryPulseEffectTest, RenderBlendsRed )
 {
   BatteryPulseEffect effect;
-  std::array<uint16_t, 8> cells1 = { 3600, 4000, 4000, 4000, 4000, 4000, 4000, 4000 };
-  std::array<uint16_t, 8> cells2 = { 4000, 4000, 4000, 3600, 4000, 4000, 4000, 4000 };
+  uint16_t low = BatteryPulseEffect::DEFAULT_LOW_CELL_MV - 1;
+  uint16_t high = 4000;
+  std::array<uint16_t, 8> cells1 = { low, high, high, high, high, high, high, high };
+  std::array<uint16_t, 8> cells2 = { high, high, high, low, high, high, high, high };
   effect.updateBatteryState( cells1, cells2 );
 
   // Advance to a point where pulse > 0
@@ -223,6 +236,58 @@ TEST( BatteryPulseEffectTest, RenderBlendsRed )
   effect.render( pixels );
 
   for ( const auto &p : pixels ) EXPECT_GT( p.r, 0 ); // red component increased
+}
+
+TEST( BatteryPulseEffectTest, Hysteresis )
+{
+  BatteryPulseEffect effect;
+  std::array<uint16_t, 8> ok = { 4000, 4000, 4000, 4000, 4000, 4000, 4000, 4000 };
+  std::array<uint16_t, 8> low = { BatteryPulseEffect::DEFAULT_LOW_CELL_MV - 1,
+                                  4000,
+                                  4000,
+                                  4000,
+                                  4000,
+                                  4000,
+                                  4000,
+                                  4000 }; // < 3700
+  std::array<uint16_t, 8> mid = { BatteryPulseEffect::DEFAULT_LOW_CELL_MV +
+                                      BatteryPulseEffect::HYSTERESIS_MV / 2,
+                                  4000,
+                                  4000,
+                                  4000,
+                                  4000,
+                                  4000,
+                                  4000,
+                                  4000 }; // > 3700, < 3800
+  std::array<uint16_t, 8> high = { BatteryPulseEffect::DEFAULT_LOW_CELL_MV +
+                                       BatteryPulseEffect::HYSTERESIS_MV + 1,
+                                   4000,
+                                   4000,
+                                   4000,
+                                   4000,
+                                   4000,
+                                   4000,
+                                   4000 }; // > 3800
+
+  // 1. Initially OK
+  effect.updateBatteryState( ok, ok );
+  EXPECT_FALSE( effect.isLowBattery() );
+
+  // 2. Mid voltage (3750) - should NOT trigger yet (threshold is 3700)
+  effect.updateBatteryState( mid, mid );
+  EXPECT_FALSE( effect.isLowBattery() );
+
+  // 3. Low voltage (3650) - should trigger
+  effect.updateBatteryState( low, low );
+  EXPECT_TRUE( effect.isLowBattery() );
+
+  // 4. Back to mid voltage (3750) - should PERSIST (hysteresis threshold 3800)
+  effect.updateBatteryState( mid, mid );
+  EXPECT_TRUE( effect.isLowBattery() );
+
+  // 5. Back to high voltage (3850) - should CLEAR
+  effect.updateBatteryState( high, high );
+  EXPECT_FALSE( effect.isLowBattery() );
 }
 
 // ============================================================================

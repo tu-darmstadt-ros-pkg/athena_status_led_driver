@@ -5,6 +5,10 @@ namespace athena_status_led_driver
 
 void BatteryPulseEffect::update( double dt )
 {
+  if ( !low_battery_ ) {
+    phase_ = 0.0;
+    return;
+  }
   phase_ += dt * PULSE_FREQUENCY_HZ * 2.0 * M_PI;
   if ( phase_ > 2.0 * M_PI )
     phase_ -= 2.0 * M_PI;
@@ -30,8 +34,13 @@ void BatteryPulseEffect::updateBatteryState(
 {
   bool bat1_connected = isConnected( cell_voltages_battery1 );
   bool bat2_connected = isConnected( cell_voltages_battery2 );
-  bool bat1_low = hasLowCell( cell_voltages_battery1, low_cell_mv );
-  bool bat2_low = hasLowCell( cell_voltages_battery2, low_cell_mv );
+
+  // Hysteresis: if already in low_battery state, we need a higher voltage to clear it.
+  uint16_t threshold = low_battery_ ? ( low_cell_mv + HYSTERESIS_MV ) : low_cell_mv;
+
+  bool bat1_low = hasLowCell( cell_voltages_battery1, threshold );
+  bool bat2_low = hasLowCell( cell_voltages_battery2, threshold );
+
   if ( bat1_connected && bat2_connected ) {
     low_battery_ = bat1_low && bat2_low;
   } else if ( !bat1_connected && !bat2_connected ) {
