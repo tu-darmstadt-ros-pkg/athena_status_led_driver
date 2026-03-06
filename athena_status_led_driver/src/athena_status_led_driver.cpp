@@ -35,6 +35,10 @@ void AthenaStatusLedDriver::setup()
   declare_readonly_parameter( "spi_speed_hz", spi_speed_hz_, "SPI clock frequency in Hz" );
   declare_readonly_parameter( "simulate", simulate_,
                               "Use terminal visualization instead of SPI hardware" );
+  double initial_orientation = M_PI;
+  declare_readonly_parameter(
+      "initial_orientation", initial_orientation,
+      "Initial orientation of the LED ring (if no joint state is received yet)" );
   declare_reconfigurable_parameter(
       "global_brightness", std::ref( global_brightness_ ), "Global brightness (0.0 - 1.0)",
       hector::ParameterOptions<double>().setRange( 0.0, 1.0, 0.0 ).onUpdate( [this]( const double &value ) {
@@ -64,6 +68,8 @@ void AthenaStatusLedDriver::setup()
   // Create controller
   controller_ = std::make_unique<LedRingController>( static_cast<size_t>( led_count_ ), transport_ );
   controller_->setBrightness( static_cast<float>( global_brightness_ ) );
+
+  controller_->setRotation( initial_orientation );
 
   // Create effects
   operating_mode_effect_ = std::make_shared<OperatingModeEffect>();

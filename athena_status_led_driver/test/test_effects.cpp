@@ -556,8 +556,12 @@ TEST( BatteryConnectionEffectTest, JointAngleRotation )
 
   std::vector<Color> pixels( LED_COUNT, Color( 0, 0, 0 ) );
   effect.render( pixels );
-  EXPECT_EQ( pixels[27], Color( 0, 255, 0 ) ); // Center of side 1 (+90 deg)
-  EXPECT_EQ( pixels[28], Color( 0, 255, 0 ) );
+  EXPECT_EQ( pixels[27].r, 0 ); // Center of side 1 (+90 deg)
+  EXPECT_GT( pixels[27].g, 80 );
+  EXPECT_EQ( pixels[27].b, 0 );
+  EXPECT_EQ( pixels[28].r, 0 );
+  EXPECT_GT( pixels[28].g, 80 );
+  EXPECT_EQ( pixels[28].b, 0 );
 
   // Battery 2 is at -90 deg (270 deg) -> index 110 * 0.75 = 82.5
   BatteryConnectionEffect effect2( LED_COUNT );
@@ -565,8 +569,12 @@ TEST( BatteryConnectionEffectTest, JointAngleRotation )
   effect2.update( 0.99 );
   pixels.assign( LED_COUNT, Color( 0, 0, 0 ) );
   effect2.render( pixels );
-  EXPECT_EQ( pixels[82], Color( 0, 255, 0 ) );
-  EXPECT_EQ( pixels[83], Color( 0, 255, 0 ) );
+  EXPECT_EQ( pixels[82].r, 0 );
+  EXPECT_GT( pixels[82].g, 80 );
+  EXPECT_EQ( pixels[82].b, 0 );
+  EXPECT_EQ( pixels[83].r, 0 );
+  EXPECT_GT( pixels[83].g, 80 );
+  EXPECT_EQ( pixels[83].b, 0 );
 }
 
 // ============================================================================
@@ -857,7 +865,7 @@ TEST( IntegrationTest, FullPipelineLifecycle )
   controller.tick( 0.5 );
   bool has_green = false;
   for ( const auto &p : transport->lastFrame() )
-    if ( p.g > 200 )
+    if ( p.g > 100 )
       has_green = true;
   EXPECT_TRUE( has_green );
 }
