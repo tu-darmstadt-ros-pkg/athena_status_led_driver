@@ -1,6 +1,7 @@
 #include "athena_status_led_driver/effects/battery_connection_effect.hpp"
 #include <algorithm>
 #include <cmath>
+#include <rclcpp/logging.hpp>
 
 namespace athena_status_led_driver
 {
@@ -49,7 +50,7 @@ void BatteryConnectionEffect::render( std::vector<Color> &pixels )
   if ( led_count_ == 0 )
     return;
 
-  Color green( 0, 255, 0 );
+  Color green = Color( 0, 255, 0 ).scaled( BRIGHTNESS );
   double led_per_rad = static_cast<double>( led_count_ ) / ( 2.0 * M_PI );
 
   for ( size_t i = 0; i < 2; ++i ) {
@@ -77,8 +78,7 @@ void BatteryConnectionEffect::render( std::vector<Color> &pixels )
       }
 
       if ( dist <= current_half_width ) {
-        // Simple fill for now, could add smoothing
-        pixels[j] = pixels[j].blendOver( green, 1.0f );
+        pixels[j] = green;
       }
     }
   }
@@ -95,10 +95,13 @@ void BatteryConnectionEffect::updateBatteryState( const std::array<uint16_t, CEL
   for ( size_t i = 0; i < 2; ++i ) {
     if ( new_conns[i] && !batteries_[i].connected ) {
       // Trigger connection animation
+      RCLCPP_INFO( rclcpp::get_logger( "athena_status_led_driver" ), "Battery %zu connected", i + 1 );
       batteries_[i].state = State::CONNECTING;
       batteries_[i].progress = 0.0;
     } else if ( !new_conns[i] && batteries_[i].connected ) {
       // Trigger disconnection animation
+      RCLCPP_INFO( rclcpp::get_logger( "athena_status_led_driver" ), "Battery %zu disconnected",
+                   i + 1 );
       batteries_[i].state = State::DISCONNECTING_QUICK_FILL;
       batteries_[i].progress = 0.0;
     }

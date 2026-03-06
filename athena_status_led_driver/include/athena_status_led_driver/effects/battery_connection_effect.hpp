@@ -18,6 +18,7 @@ namespace athena_status_led_driver
 class BatteryConnectionEffect : public LedEffect
 {
 public:
+  static constexpr double BRIGHTNESS = 0.5;
   static constexpr size_t CELLS_PER_BATTERY = 8;
   static constexpr double CONN_DURATION = 1.0;
   static constexpr double DISCONN_QUICK_FILL_DURATION = 0.2;
