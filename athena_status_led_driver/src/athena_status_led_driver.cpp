@@ -1,4 +1,5 @@
 #include "athena_status_led_driver/athena_status_led_driver.hpp"
+#include "athena_status_led_driver/effects/battery_connection_effect.hpp"
 #include "athena_status_led_driver/effects/battery_pulse_effect.hpp"
 #include "athena_status_led_driver/effects/operating_mode_effect.hpp"
 #include "athena_status_led_driver/effects/power_supply_effect.hpp"
@@ -71,6 +72,8 @@ void AthenaStatusLedDriver::setup()
   spot_light_effect_ = std::make_shared<SpotLightEffect>( static_cast<size_t>( led_count_ ) );
   rainbow_loading_effect_ =
       std::make_shared<RainbowLoadingEffect>( static_cast<size_t>( led_count_ ) );
+  battery_connection_effect_ =
+      std::make_shared<BatteryConnectionEffect>( static_cast<size_t>( led_count_ ) );
 
   // Wire effects in render order (later effects render on top of earlier ones):
   controller_->addEffect( rainbow_loading_effect_ );
@@ -78,6 +81,7 @@ void AthenaStatusLedDriver::setup()
   controller_->addEffect( battery_pulse_effect_ );
   controller_->addEffect( power_supply_effect_ );
   controller_->addEffect( spot_light_effect_ );
+  controller_->addEffect( battery_connection_effect_ );
 
   // Create subscribers
   operating_mode_sub_ = create_subscription<std_msgs::msg::String>(
@@ -87,6 +91,10 @@ void AthenaStatusLedDriver::setup()
   battery_sub_ = create_subscription<athena_firmware_interface_msgs::msg::BatteryStatus>(
       "battery", rclcpp::SensorDataQoS(),
       std::bind( &AthenaStatusLedDriver::onBatteryStatus, this, std::placeholders::_1 ) );
+
+  joint_state_sub_ = create_subscription<sensor_msgs::msg::JointState>(
+      "joint_states", rclcpp::SensorDataQoS(),
+      std::bind( &AthenaStatusLedDriver::onJointState, this, std::placeholders::_1 ) );
 
   // Create service
   set_spot_light_srv_ = create_service<athena_status_led_driver_msgs::srv::SetSpotLight>(
@@ -99,6 +107,7 @@ void AthenaStatusLedDriver::cleanUp()
   timer_.reset();
   operating_mode_sub_.reset();
   battery_sub_.reset();
+  joint_state_sub_.reset();
   set_spot_light_srv_.reset();
 
   controller_.reset();
@@ -108,6 +117,7 @@ void AthenaStatusLedDriver::cleanUp()
   power_supply_effect_.reset();
   spot_light_effect_.reset();
   rainbow_loading_effect_.reset();
+  battery_connection_effect_.reset();
 
   if ( transport_ ) {
     transport_->close();
@@ -156,6 +166,18 @@ void AthenaStatusLedDriver::onBatteryStatus(
     cells2[i] = msg->cell_voltages_battery2_mv[i];
   }
   battery_pulse_effect_->updateBatteryState( cells1, cells2 );
+  battery_connection_effect_->updateBatteryState( cells1, cells2 );
+}
+
+void AthenaStatusLedDriver::onJointState( const sensor_msgs::msg::JointState::SharedPtr msg )
+{
+  auto it = std::find( msg->name.begin(), msg->name.end(), "arm_joint_1" );
+  if ( it != msg->name.end() ) {
+    size_t idx = std::distance( msg->name.begin(), it );
+    if ( idx < msg->position.size() ) {
+      controller_->setRotation( msg->position[idx] );
+    }
+  }
 }
 
 void AthenaStatusLedDriver::onSetSpotLight(

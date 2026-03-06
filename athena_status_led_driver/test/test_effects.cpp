@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 
 #include "./mock_transport.hpp"
+#include "athena_status_led_driver/effects/battery_connection_effect.hpp"
 #include "athena_status_led_driver/effects/battery_pulse_effect.hpp"
 #include "athena_status_led_driver/effects/operating_mode_effect.hpp"
 #include "athena_status_led_driver/effects/power_supply_effect.hpp"
@@ -437,6 +438,138 @@ TEST( RainbowLoadingEffectTest, InactiveRenderDoesNothing )
 }
 
 // ============================================================================
+// BatteryConnectionEffect Tests
+// ============================================================================
+
+TEST( BatteryConnectionEffectTest, InactiveByDefault )
+{
+  BatteryConnectionEffect effect( LED_COUNT );
+  EXPECT_FALSE( effect.isActive() );
+}
+
+TEST( BatteryConnectionEffectTest, TriggersOnConnection )
+{
+  BatteryConnectionEffect effect( LED_COUNT );
+  std::array<uint16_t, 8> low = { 3500, 3500, 3500, 3500, 3500, 3500, 3500, 3500 };
+  std::array<uint16_t, 8> disconnected = { 0, 0, 0, 0, 0, 0, 0, 0 };
+
+  effect.updateBatteryState( low, disconnected );
+  EXPECT_TRUE( effect.isActive() ); // Battery 1 connected
+}
+
+TEST( BatteryConnectionEffectTest, AnimationProgress )
+{
+  BatteryConnectionEffect effect( LED_COUNT );
+  std::array<uint16_t, 8> ok = { 4000, 4000, 4000, 4000, 4000, 4000, 4000, 4000 };
+  std::array<uint16_t, 8> disconnected = { 0, 0, 0, 0, 0, 0, 0, 0 };
+
+  effect.updateBatteryState( ok, disconnected );
+
+  std::vector<Color> pixels( LED_COUNT, Color( 0, 0, 0 ) );
+  effect.render( pixels );
+
+  // At t=0, progress=0, no LEDs should be green
+  int green_count = 0;
+  for ( const auto &p : pixels )
+    if ( p.g > 0 )
+      green_count++;
+  EXPECT_EQ( green_count, 0 );
+
+  // At t=0.5s, half the animation (which is 1s total)
+  effect.update( 0.5 );
+  pixels.assign( LED_COUNT, Color( 0, 0, 0 ) );
+  effect.render( pixels );
+
+  green_count = 0;
+  for ( const auto &p : pixels )
+    if ( p.g > 0 )
+      green_count++;
+  // Each battery side is 110/2 = 55 LEDs. At 50%, it should be around 27-28 LEDs.
+  EXPECT_NEAR( green_count, 27, 2 );
+
+  // At t=0.99s, almost full animation
+  effect.update( 0.49 );
+  pixels.assign( LED_COUNT, Color( 0, 0, 0 ) );
+  effect.render( pixels );
+
+  green_count = 0;
+  for ( const auto &p : pixels )
+    if ( p.g > 0 )
+      green_count++;
+  EXPECT_NEAR( green_count, 55, 2 );
+
+  // At t=1.01s, animation finished, should be inactive
+  effect.update( 0.02 );
+  EXPECT_FALSE( effect.isActive() );
+}
+
+TEST( BatteryConnectionEffectTest, DisconnectionAnimation )
+{
+  BatteryConnectionEffect effect( LED_COUNT );
+  std::array<uint16_t, 8> ok = { 4000, 4000, 4000, 4000, 4000, 4000, 4000, 4000 };
+  std::array<uint16_t, 8> disconnected = { 0, 0, 0, 0, 0, 0, 0, 0 };
+
+  // Connect
+  effect.updateBatteryState( ok, disconnected );
+  effect.update( 1.01 ); // Finish connection animation
+  EXPECT_FALSE( effect.isActive() );
+
+  // Disconnect
+  effect.updateBatteryState( disconnected, disconnected );
+  EXPECT_TRUE( effect.isActive() );
+
+  // 0.2s quick fill to 100%
+  effect.update( 0.1 );
+  std::vector<Color> pixels( LED_COUNT, Color( 0, 0, 0 ) );
+  effect.render( pixels );
+  int green_count = 0;
+  for ( const auto &p : pixels )
+    if ( p.g > 0 )
+      green_count++;
+  EXPECT_NEAR( green_count, 27, 2 );
+
+  effect.update( 0.11 ); // Finish quick fill, enter shrink
+  // Now it's in shrink state (0.8s)
+  effect.update( 0.4 ); // 50% of shrink
+  pixels.assign( LED_COUNT, Color( 0, 0, 0 ) );
+  effect.render( pixels );
+  green_count = 0;
+  for ( const auto &p : pixels )
+    if ( p.g > 0 )
+      green_count++;
+  EXPECT_NEAR( green_count, 27, 2 );
+
+  effect.update( 0.41 ); // Finish shrink
+  EXPECT_FALSE( effect.isActive() );
+}
+
+TEST( BatteryConnectionEffectTest, JointAngleRotation )
+{
+  // This test now only verifies that BatteryConnectionEffect renders at fixed indices
+  // (27/28 for +90 deg), because global rotation is handled by the controller.
+  BatteryConnectionEffect effect( LED_COUNT );
+  std::array<uint16_t, 8> ok = { 4000, 4000, 4000, 4000, 4000, 4000, 4000, 4000 };
+  std::array<uint16_t, 8> disconnected = { 0, 0, 0, 0, 0, 0, 0, 0 };
+
+  effect.updateBatteryState( ok, disconnected );
+  effect.update( 0.99 );
+
+  std::vector<Color> pixels( LED_COUNT, Color( 0, 0, 0 ) );
+  effect.render( pixels );
+  EXPECT_EQ( pixels[27], Color( 0, 255, 0 ) ); // Center of side 1 (+90 deg)
+  EXPECT_EQ( pixels[28], Color( 0, 255, 0 ) );
+
+  // Battery 2 is at -90 deg (270 deg) -> index 110 * 0.75 = 82.5
+  BatteryConnectionEffect effect2( LED_COUNT );
+  effect2.updateBatteryState( disconnected, ok );
+  effect2.update( 0.99 );
+  pixels.assign( LED_COUNT, Color( 0, 0, 0 ) );
+  effect2.render( pixels );
+  EXPECT_EQ( pixels[82], Color( 0, 255, 0 ) );
+  EXPECT_EQ( pixels[83], Color( 0, 255, 0 ) );
+}
+
+// ============================================================================
 // LedRingController (render pipeline) tests
 // ============================================================================
 
@@ -450,6 +583,41 @@ TEST( LedRingControllerTest, TickSendsFrame )
 
   EXPECT_EQ( transport->frameCount(), 1u );
   EXPECT_EQ( transport->lastFrame().size(), LED_COUNT );
+}
+
+TEST( LedRingControllerTest, Rotation )
+{
+  auto transport = std::make_shared<MockTransport>();
+  transport->open();
+
+  LedRingController controller( LED_COUNT, transport );
+  // Create a dummy effect that sets one pixel
+  struct DummyEffect : public LedEffect {
+    bool isActive() const override { return true; }
+    void update( double ) override { }
+    void render( std::vector<Color> &pixels ) override { pixels[0] = Color( 255, 0, 0 ); }
+  };
+  controller.addEffect( std::make_shared<DummyEffect>() );
+
+  // No rotation -> pixel 0 is red
+  controller.setRotation( 0.0 );
+  controller.tick( 0.0 );
+  EXPECT_EQ( transport->lastFrame()[0], Color( 255, 0, 0 ) );
+
+  // Rotate by exactly 28 indices CCW.
+  // rotation = 2 * PI * 28 / 110
+  double rot28 = 2.0 * M_PI * 28.0 / static_cast<double>( LED_COUNT );
+  controller.setRotation( rot28 );
+  controller.tick( 0.0 );
+  // index_shift = round(-28) = -28. 0 + (-28) = -28 -> 82.
+  EXPECT_EQ( transport->lastFrame()[82], Color( 255, 0, 0 ) );
+
+  // Rotate CW by 10 indices.
+  double rot10cw = -2.0 * M_PI * 10.0 / static_cast<double>( LED_COUNT );
+  controller.setRotation( rot10cw );
+  controller.tick( 0.0 );
+  // index_shift = round(10) = 10. 0 + 10 = 10.
+  EXPECT_EQ( transport->lastFrame()[10], Color( 255, 0, 0 ) );
 }
 
 TEST( LedRingControllerTest, BlackWithNoEffects )
@@ -628,6 +796,7 @@ TEST( IntegrationTest, FullPipelineLifecycle )
   auto battery = std::make_shared<BatteryPulseEffect>();
   auto power = std::make_shared<PowerSupplyEffect>( LED_COUNT );
   auto light = std::make_shared<SpotLightEffect>( LED_COUNT );
+  auto conn = std::make_shared<BatteryConnectionEffect>( LED_COUNT );
 
   LedRingController controller( LED_COUNT, transport );
   controller.addEffect( rainbow );
@@ -635,6 +804,7 @@ TEST( IntegrationTest, FullPipelineLifecycle )
   controller.addEffect( power );
   controller.addEffect( battery );
   controller.addEffect( light );
+  controller.addEffect( conn );
 
   // Phase 1: No mode set → rainbow visible
   controller.tick( 0.033 );
@@ -680,6 +850,16 @@ TEST( IntegrationTest, FullPipelineLifecycle )
       green_count++;
   }
   EXPECT_GE( green_count, 4 );
+
+  // Phase 5: Battery connection animation
+  std::array<uint16_t, 8> disconnected = { 0, 0, 0, 0, 0, 0, 0, 0 };
+  conn->updateBatteryState( ok, disconnected );
+  controller.tick( 0.5 );
+  bool has_green = false;
+  for ( const auto &p : transport->lastFrame() )
+    if ( p.g > 200 )
+      has_green = true;
+  EXPECT_TRUE( has_green );
 }
 
 int main( int argc, char **argv )

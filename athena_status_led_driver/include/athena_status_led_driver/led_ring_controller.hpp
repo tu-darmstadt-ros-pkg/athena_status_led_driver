@@ -30,6 +30,9 @@ public:
   /// Set global brightness (0.0–1.0)
   void setBrightness( float brightness );
 
+  /// Set global rotation offset (in radians)
+  void setRotation( double angle_rad );
+
   float brightness() const;
 
   /// Update all effects, render the frame, and send it
@@ -47,6 +50,7 @@ private:
   std::vector<Color> pixels_;
   std::vector<std::shared_ptr<LedEffect>> effects_;
   float brightness_ = 1.0f;
+  double rotation_rad_ = 0.0;
 };
 
 } // namespace athena_status_led_driver
