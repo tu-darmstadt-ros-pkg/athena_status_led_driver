@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 
 #include "./mock_transport.hpp"
+#include "athena_status_led_driver/effects/battery_connection_effect.hpp"
 #include "athena_status_led_driver/effects/battery_pulse_effect.hpp"
 #include "athena_status_led_driver/effects/operating_mode_effect.hpp"
 #include "athena_status_led_driver/effects/power_supply_effect.hpp"
@@ -165,8 +166,10 @@ TEST( BatteryPulseEffectTest, InactiveByDefault )
 TEST( BatteryPulseEffectTest, LowBattery_BothLow )
 {
   BatteryPulseEffect effect;
-  std::array<uint16_t, 8> cells1 = { 3600, 4000, 4000, 4000, 4000, 4000, 4000, 4000 };
-  std::array<uint16_t, 8> cells2 = { 4000, 4000, 4000, 3600, 4000, 4000, 4000, 4000 };
+  uint16_t low = BatteryPulseEffect::DEFAULT_LOW_CELL_MV - 1;
+  uint16_t high = 4000;
+  std::array<uint16_t, 8> cells1 = { low, high, high, high, high, high, high, high };
+  std::array<uint16_t, 8> cells2 = { high, high, high, low, high, high, high, high };
   effect.updateBatteryState( cells1, cells2 );
   EXPECT_TRUE( effect.isLowBattery() );
   EXPECT_TRUE( effect.isActive() );
@@ -175,8 +178,10 @@ TEST( BatteryPulseEffectTest, LowBattery_BothLow )
 TEST( BatteryPulseEffectTest, NotLowBattery_OnlyOneLow )
 {
   BatteryPulseEffect effect;
-  std::array<uint16_t, 8> cells1 = { 3600, 4000, 4000, 4000, 4000, 4000, 4000, 4000 };
-  std::array<uint16_t, 8> cells2 = { 4000, 4000, 4000, 4000, 4000, 4000, 4000, 4000 };
+  uint16_t low = BatteryPulseEffect::DEFAULT_LOW_CELL_MV - 1;
+  uint16_t high = 4000;
+  std::array<uint16_t, 8> cells1 = { low, high, high, high, high, high, high, high };
+  std::array<uint16_t, 8> cells2 = { high, high, high, high, high, high, high, high };
   effect.updateBatteryState( cells1, cells2 );
   EXPECT_FALSE( effect.isLowBattery() );
 }
@@ -200,10 +205,17 @@ TEST( BatteryPulseEffectTest, ZeroCellVoltagesAreIgnored )
   EXPECT_FALSE( effect.isLowBattery() );
 }
 
-TEST( BatteryPulseEffectTest, PulseAdvancesPhase )
+TEST( BatteryPulseEffectTest, PulseAdvancesPhaseOnlyIfLowBattery )
 {
   BatteryPulseEffect effect;
+  uint16_t low = BatteryPulseEffect::DEFAULT_LOW_CELL_MV - 1;
+  uint16_t high = 4000;
+  std::array<uint16_t, 8> cells1 = { low, high, high, high, high, high, high, high };
+  std::array<uint16_t, 8> cells2 = { high, high, high, low, high, high, high, high };
   double before = effect.phase();
+  effect.update( 0.1 );
+  EXPECT_EQ( effect.phase(), before );
+  effect.updateBatteryState( cells1, cells2 );
   effect.update( 0.1 );
   EXPECT_GT( effect.phase(), before );
 }
@@ -211,8 +223,10 @@ TEST( BatteryPulseEffectTest, PulseAdvancesPhase )
 TEST( BatteryPulseEffectTest, RenderBlendsRed )
 {
   BatteryPulseEffect effect;
-  std::array<uint16_t, 8> cells1 = { 3600, 4000, 4000, 4000, 4000, 4000, 4000, 4000 };
-  std::array<uint16_t, 8> cells2 = { 4000, 4000, 4000, 3600, 4000, 4000, 4000, 4000 };
+  uint16_t low = BatteryPulseEffect::DEFAULT_LOW_CELL_MV - 1;
+  uint16_t high = 4000;
+  std::array<uint16_t, 8> cells1 = { low, high, high, high, high, high, high, high };
+  std::array<uint16_t, 8> cells2 = { high, high, high, low, high, high, high, high };
   effect.updateBatteryState( cells1, cells2 );
 
   // Advance to a point where pulse > 0
@@ -222,6 +236,58 @@ TEST( BatteryPulseEffectTest, RenderBlendsRed )
   effect.render( pixels );
 
   for ( const auto &p : pixels ) EXPECT_GT( p.r, 0 ); // red component increased
+}
+
+TEST( BatteryPulseEffectTest, Hysteresis )
+{
+  BatteryPulseEffect effect;
+  std::array<uint16_t, 8> ok = { 4000, 4000, 4000, 4000, 4000, 4000, 4000, 4000 };
+  std::array<uint16_t, 8> low = { BatteryPulseEffect::DEFAULT_LOW_CELL_MV - 1,
+                                  4000,
+                                  4000,
+                                  4000,
+                                  4000,
+                                  4000,
+                                  4000,
+                                  4000 }; // < 3700
+  std::array<uint16_t, 8> mid = { BatteryPulseEffect::DEFAULT_LOW_CELL_MV +
+                                      BatteryPulseEffect::HYSTERESIS_MV / 2,
+                                  4000,
+                                  4000,
+                                  4000,
+                                  4000,
+                                  4000,
+                                  4000,
+                                  4000 }; // > 3700, < 3800
+  std::array<uint16_t, 8> high = { BatteryPulseEffect::DEFAULT_LOW_CELL_MV +
+                                       BatteryPulseEffect::HYSTERESIS_MV + 1,
+                                   4000,
+                                   4000,
+                                   4000,
+                                   4000,
+                                   4000,
+                                   4000,
+                                   4000 }; // > 3800
+
+  // 1. Initially OK
+  effect.updateBatteryState( ok, ok );
+  EXPECT_FALSE( effect.isLowBattery() );
+
+  // 2. Mid voltage (3750) - should NOT trigger yet (threshold is 3700)
+  effect.updateBatteryState( mid, mid );
+  EXPECT_FALSE( effect.isLowBattery() );
+
+  // 3. Low voltage (3650) - should trigger
+  effect.updateBatteryState( low, low );
+  EXPECT_TRUE( effect.isLowBattery() );
+
+  // 4. Back to mid voltage (3750) - should PERSIST (hysteresis threshold 3800)
+  effect.updateBatteryState( mid, mid );
+  EXPECT_TRUE( effect.isLowBattery() );
+
+  // 5. Back to high voltage (3850) - should CLEAR
+  effect.updateBatteryState( high, high );
+  EXPECT_FALSE( effect.isLowBattery() );
 }
 
 // ============================================================================
@@ -437,6 +503,146 @@ TEST( RainbowLoadingEffectTest, InactiveRenderDoesNothing )
 }
 
 // ============================================================================
+// BatteryConnectionEffect Tests
+// ============================================================================
+
+TEST( BatteryConnectionEffectTest, InactiveByDefault )
+{
+  BatteryConnectionEffect effect( LED_COUNT );
+  EXPECT_FALSE( effect.isActive() );
+}
+
+TEST( BatteryConnectionEffectTest, TriggersOnConnection )
+{
+  BatteryConnectionEffect effect( LED_COUNT );
+  std::array<uint16_t, 8> low = { 3500, 3500, 3500, 3500, 3500, 3500, 3500, 3500 };
+  std::array<uint16_t, 8> disconnected = { 0, 0, 0, 0, 0, 0, 0, 0 };
+
+  effect.updateBatteryState( low, disconnected );
+  EXPECT_TRUE( effect.isActive() ); // Battery 1 connected
+}
+
+TEST( BatteryConnectionEffectTest, AnimationProgress )
+{
+  BatteryConnectionEffect effect( LED_COUNT );
+  std::array<uint16_t, 8> ok = { 4000, 4000, 4000, 4000, 4000, 4000, 4000, 4000 };
+  std::array<uint16_t, 8> disconnected = { 0, 0, 0, 0, 0, 0, 0, 0 };
+
+  effect.updateBatteryState( ok, disconnected );
+
+  std::vector<Color> pixels( LED_COUNT, Color( 0, 0, 0 ) );
+  effect.render( pixels );
+
+  // At t=0, progress=0, no LEDs should be green
+  int green_count = 0;
+  for ( const auto &p : pixels )
+    if ( p.g > 0 )
+      green_count++;
+  EXPECT_EQ( green_count, 0 );
+
+  // At t=0.5s, half the animation (which is 1s total)
+  effect.update( 0.5 );
+  pixels.assign( LED_COUNT, Color( 0, 0, 0 ) );
+  effect.render( pixels );
+
+  green_count = 0;
+  for ( const auto &p : pixels )
+    if ( p.g > 0 )
+      green_count++;
+  // Each battery side is 110/2 = 55 LEDs. At 50%, it should be around 27-28 LEDs.
+  EXPECT_NEAR( green_count, 27, 2 );
+
+  // At t=0.99s, almost full animation
+  effect.update( 0.49 );
+  pixels.assign( LED_COUNT, Color( 0, 0, 0 ) );
+  effect.render( pixels );
+
+  green_count = 0;
+  for ( const auto &p : pixels )
+    if ( p.g > 0 )
+      green_count++;
+  EXPECT_NEAR( green_count, 55, 2 );
+
+  // At t=1.01s, animation finished, should be inactive
+  effect.update( 0.02 );
+  EXPECT_FALSE( effect.isActive() );
+}
+
+TEST( BatteryConnectionEffectTest, DisconnectionAnimation )
+{
+  BatteryConnectionEffect effect( LED_COUNT );
+  std::array<uint16_t, 8> ok = { 4000, 4000, 4000, 4000, 4000, 4000, 4000, 4000 };
+  std::array<uint16_t, 8> disconnected = { 0, 0, 0, 0, 0, 0, 0, 0 };
+
+  // Connect
+  effect.updateBatteryState( ok, disconnected );
+  effect.update( 1.01 ); // Finish connection animation
+  EXPECT_FALSE( effect.isActive() );
+
+  // Disconnect
+  effect.updateBatteryState( disconnected, disconnected );
+  EXPECT_TRUE( effect.isActive() );
+
+  // 0.2s quick fill to 100%
+  effect.update( 0.1 );
+  std::vector<Color> pixels( LED_COUNT, Color( 0, 0, 0 ) );
+  effect.render( pixels );
+  int green_count = 0;
+  for ( const auto &p : pixels )
+    if ( p.g > 0 )
+      green_count++;
+  EXPECT_NEAR( green_count, 27, 2 );
+
+  effect.update( 0.11 ); // Finish quick fill, enter shrink
+  // Now it's in shrink state (0.8s)
+  effect.update( 0.4 ); // 50% of shrink
+  pixels.assign( LED_COUNT, Color( 0, 0, 0 ) );
+  effect.render( pixels );
+  green_count = 0;
+  for ( const auto &p : pixels )
+    if ( p.g > 0 )
+      green_count++;
+  EXPECT_NEAR( green_count, 27, 2 );
+
+  effect.update( 0.41 ); // Finish shrink
+  EXPECT_FALSE( effect.isActive() );
+}
+
+TEST( BatteryConnectionEffectTest, JointAngleRotation )
+{
+  // This test now only verifies that BatteryConnectionEffect renders at fixed indices
+  // (27/28 for +90 deg), because global rotation is handled by the controller.
+  BatteryConnectionEffect effect( LED_COUNT );
+  std::array<uint16_t, 8> ok = { 4000, 4000, 4000, 4000, 4000, 4000, 4000, 4000 };
+  std::array<uint16_t, 8> disconnected = { 0, 0, 0, 0, 0, 0, 0, 0 };
+
+  effect.updateBatteryState( ok, disconnected );
+  effect.update( 0.99 );
+
+  std::vector<Color> pixels( LED_COUNT, Color( 0, 0, 0 ) );
+  effect.render( pixels );
+  EXPECT_EQ( pixels[27].r, 0 ); // Center of side 1 (+90 deg)
+  EXPECT_GT( pixels[27].g, 80 );
+  EXPECT_EQ( pixels[27].b, 0 );
+  EXPECT_EQ( pixels[28].r, 0 );
+  EXPECT_GT( pixels[28].g, 80 );
+  EXPECT_EQ( pixels[28].b, 0 );
+
+  // Battery 2 is at -90 deg (270 deg) -> index 110 * 0.75 = 82.5
+  BatteryConnectionEffect effect2( LED_COUNT );
+  effect2.updateBatteryState( disconnected, ok );
+  effect2.update( 0.99 );
+  pixels.assign( LED_COUNT, Color( 0, 0, 0 ) );
+  effect2.render( pixels );
+  EXPECT_EQ( pixels[82].r, 0 );
+  EXPECT_GT( pixels[82].g, 80 );
+  EXPECT_EQ( pixels[82].b, 0 );
+  EXPECT_EQ( pixels[83].r, 0 );
+  EXPECT_GT( pixels[83].g, 80 );
+  EXPECT_EQ( pixels[83].b, 0 );
+}
+
+// ============================================================================
 // LedRingController (render pipeline) tests
 // ============================================================================
 
@@ -450,6 +656,41 @@ TEST( LedRingControllerTest, TickSendsFrame )
 
   EXPECT_EQ( transport->frameCount(), 1u );
   EXPECT_EQ( transport->lastFrame().size(), LED_COUNT );
+}
+
+TEST( LedRingControllerTest, Rotation )
+{
+  auto transport = std::make_shared<MockTransport>();
+  transport->open();
+
+  LedRingController controller( LED_COUNT, transport );
+  // Create a dummy effect that sets one pixel
+  struct DummyEffect : public LedEffect {
+    bool isActive() const override { return true; }
+    void update( double ) override { }
+    void render( std::vector<Color> &pixels ) override { pixels[0] = Color( 255, 0, 0 ); }
+  };
+  controller.addEffect( std::make_shared<DummyEffect>() );
+
+  // No rotation -> pixel 0 is red
+  controller.setRotation( 0.0 );
+  controller.tick( 0.0 );
+  EXPECT_EQ( transport->lastFrame()[0], Color( 255, 0, 0 ) );
+
+  // Rotate by exactly 28 indices CCW.
+  // rotation = 2 * PI * 28 / 110
+  double rot28 = 2.0 * M_PI * 28.0 / static_cast<double>( LED_COUNT );
+  controller.setRotation( rot28 );
+  controller.tick( 0.0 );
+  // index_shift = round(-28) = -28. 0 + (-28) = -28 -> 82.
+  EXPECT_EQ( transport->lastFrame()[82], Color( 255, 0, 0 ) );
+
+  // Rotate CW by 10 indices.
+  double rot10cw = -2.0 * M_PI * 10.0 / static_cast<double>( LED_COUNT );
+  controller.setRotation( rot10cw );
+  controller.tick( 0.0 );
+  // index_shift = round(10) = 10. 0 + 10 = 10.
+  EXPECT_EQ( transport->lastFrame()[10], Color( 255, 0, 0 ) );
 }
 
 TEST( LedRingControllerTest, BlackWithNoEffects )
@@ -628,6 +869,7 @@ TEST( IntegrationTest, FullPipelineLifecycle )
   auto battery = std::make_shared<BatteryPulseEffect>();
   auto power = std::make_shared<PowerSupplyEffect>( LED_COUNT );
   auto light = std::make_shared<SpotLightEffect>( LED_COUNT );
+  auto conn = std::make_shared<BatteryConnectionEffect>( LED_COUNT );
 
   LedRingController controller( LED_COUNT, transport );
   controller.addEffect( rainbow );
@@ -635,6 +877,7 @@ TEST( IntegrationTest, FullPipelineLifecycle )
   controller.addEffect( power );
   controller.addEffect( battery );
   controller.addEffect( light );
+  controller.addEffect( conn );
 
   // Phase 1: No mode set → rainbow visible
   controller.tick( 0.033 );
@@ -680,6 +923,16 @@ TEST( IntegrationTest, FullPipelineLifecycle )
       green_count++;
   }
   EXPECT_GE( green_count, 4 );
+
+  // Phase 5: Battery connection animation
+  std::array<uint16_t, 8> disconnected = { 0, 0, 0, 0, 0, 0, 0, 0 };
+  conn->updateBatteryState( ok, disconnected );
+  controller.tick( 0.5 );
+  bool has_green = false;
+  for ( const auto &p : transport->lastFrame() )
+    if ( p.g > 100 )
+      has_green = true;
+  EXPECT_TRUE( has_green );
 }
 
 int main( int argc, char **argv )

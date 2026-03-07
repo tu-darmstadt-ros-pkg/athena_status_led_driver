@@ -17,7 +17,8 @@ namespace athena_status_led_driver
 class BatteryPulseEffect : public LedEffect
 {
 public:
-  static constexpr uint16_t DEFAULT_LOW_CELL_MV = 3700; // 3.7V
+  static constexpr uint16_t DEFAULT_LOW_CELL_MV = 3650; // 3.65V
+  static constexpr uint16_t HYSTERESIS_MV = 50;         // 0.05V
   static constexpr size_t CELLS_PER_BATTERY = 8;
   static constexpr double PULSE_FREQUENCY_HZ = 0.25; // pulses per second
   static constexpr double BRIGHTNESS = 0.2;
