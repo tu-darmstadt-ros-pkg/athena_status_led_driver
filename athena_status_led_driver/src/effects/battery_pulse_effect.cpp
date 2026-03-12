@@ -5,7 +5,8 @@ namespace athena_status_led_driver
 
 void BatteryPulseEffect::update( double dt )
 {
-  if ( !low_battery_ ) {
+  low_duration_ += dt;
+  if ( low_duration_ < 10.0 ) {
     phase_ = 0.0;
     return;
   }
@@ -16,7 +17,7 @@ void BatteryPulseEffect::update( double dt )
 
 void BatteryPulseEffect::render( std::vector<Color> &pixels )
 {
-  if ( !low_battery_ )
+  if ( low_duration_ < 10.0 )
     return;
 
   // Only positive part of sine wave so we have half the time no pulse
@@ -50,6 +51,8 @@ void BatteryPulseEffect::updateBatteryState(
   } else {
     low_battery_ = bat2_low;
   }
+  if ( !low_battery_ )
+    low_duration_ = 0;
 }
 
 bool BatteryPulseEffect::isConnected( const std::array<uint16_t, CELLS_PER_BATTERY> &cells )

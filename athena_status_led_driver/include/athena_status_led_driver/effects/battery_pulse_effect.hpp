@@ -21,11 +21,12 @@ public:
   static constexpr uint16_t HYSTERESIS_MV = 50;         // 0.05V
   static constexpr size_t CELLS_PER_BATTERY = 8;
   static constexpr double PULSE_FREQUENCY_HZ = 0.25; // pulses per second
-  static constexpr double BRIGHTNESS = 0.2;
+  static constexpr float BRIGHTNESS = 0.2f;
 
   bool isActive() const override { return low_battery_; }
 
   void update( double dt ) override;
+
   void render( std::vector<Color> &pixels ) override;
 
   /**
@@ -49,9 +50,11 @@ public:
 
 private:
   static bool isConnected( const std::array<uint16_t, CELLS_PER_BATTERY> &cells );
+
   static bool hasLowCell( const std::array<uint16_t, CELLS_PER_BATTERY> &cells,
                           uint16_t threshold_mv );
 
+  double low_duration_ = 0.0;
   bool low_battery_ = false;
   double phase_ = 0.0;
 };
