@@ -2,6 +2,7 @@
 
 #include "./mock_transport.hpp"
 #include "athena_status_led_driver/effects/battery_connection_effect.hpp"
+#include "athena_status_led_driver/effects/battery_fault_effect.hpp"
 #include "athena_status_led_driver/effects/battery_pulse_effect.hpp"
 #include "athena_status_led_driver/effects/operating_mode_effect.hpp"
 #include "athena_status_led_driver/effects/power_supply_effect.hpp"
@@ -640,6 +641,139 @@ TEST( BatteryConnectionEffectTest, JointAngleRotation )
   EXPECT_EQ( pixels[83].r, 0 );
   EXPECT_GT( pixels[83].g, 80 );
   EXPECT_EQ( pixels[83].b, 0 );
+}
+
+// ============================================================================
+// BatteryFaultEffect Tests
+// ============================================================================
+
+namespace
+{
+// Count red LEDs on a side's interior. Uses a strict bound so the two seam LEDs
+// shared between the two half-rings are not attributed to both sides.
+int countRedOnSide( const std::vector<Color> &pixels, double center_idx )
+{
+  double half_width = static_cast<double>( LED_COUNT ) / 4.0;
+  int count = 0;
+  for ( size_t j = 0; j < pixels.size(); ++j ) {
+    double diff = static_cast<double>( j ) - center_idx;
+    while ( diff < -static_cast<double>( LED_COUNT ) / 2.0 ) diff += LED_COUNT;
+    while ( diff >= static_cast<double>( LED_COUNT ) / 2.0 ) diff -= LED_COUNT;
+    if ( std::abs( diff ) < half_width && pixels[j].r > 0 )
+      ++count;
+  }
+  return count;
+}
+constexpr double SIDE1_CENTER = LED_COUNT * 0.25; // Battery 1 (+90 deg)
+constexpr double SIDE2_CENTER = LED_COUNT * 0.75; // Battery 2 (-90 deg)
+} // namespace
+
+TEST( BatteryFaultEffectTest, InactiveByDefault )
+{
+  BatteryFaultEffect effect( LED_COUNT );
+  EXPECT_FALSE( effect.isActive() );
+}
+
+TEST( BatteryFaultEffectTest, FaultWhenCellBelowThresholdButPackPresent )
+{
+  BatteryFaultEffect effect( LED_COUNT );
+  // Battery 1: one dead cell (below 3V) while the rest read normally.
+  std::array<uint16_t, 8> bad = { 0, 4000, 4000, 4000, 4000, 4000, 4000, 4000 };
+  std::array<uint16_t, 8> ok = { 4000, 4000, 4000, 4000, 4000, 4000, 4000, 4000 };
+  effect.updateBatteryState( bad, ok );
+  EXPECT_TRUE( effect.isActive() );
+  EXPECT_TRUE( effect.isFaulty( 0 ) );
+  EXPECT_FALSE( effect.isFaulty( 1 ) );
+}
+
+TEST( BatteryFaultEffectTest, NoFaultWhenFullyDisconnected )
+{
+  BatteryFaultEffect effect( LED_COUNT );
+  // All cells ~0 -> pack not present -> left to BatteryConnectionEffect.
+  std::array<uint16_t, 8> disconnected = { 0, 0, 0, 0, 0, 0, 0, 0 };
+  std::array<uint16_t, 8> ok = { 4000, 4000, 4000, 4000, 4000, 4000, 4000, 4000 };
+  effect.updateBatteryState( disconnected, ok );
+  EXPECT_FALSE( effect.isFaulty( 0 ) );
+  EXPECT_FALSE( effect.isFaulty( 1 ) );
+  EXPECT_FALSE( effect.isActive() );
+}
+
+TEST( BatteryFaultEffectTest, NoFaultWhenAllCellsHealthy )
+{
+  BatteryFaultEffect effect( LED_COUNT );
+  std::array<uint16_t, 8> ok = { 3500, 3500, 3500, 3500, 3500, 3500, 3500, 3500 };
+  effect.updateBatteryState( ok, ok );
+  EXPECT_FALSE( effect.isActive() );
+}
+
+TEST( BatteryFaultEffectTest, RendersDashesOnAffectedSideOnly )
+{
+  BatteryFaultEffect effect( LED_COUNT );
+  std::array<uint16_t, 8> bad = { 0, 4000, 4000, 4000, 4000, 4000, 4000, 4000 };
+  std::array<uint16_t, 8> ok = { 4000, 4000, 4000, 4000, 4000, 4000, 4000, 4000 };
+  effect.updateBatteryState( bad, ok ); // only battery 1 faulty
+
+  std::vector<Color> pixels( LED_COUNT, Color( 0, 0, 0 ) );
+  effect.render( pixels );
+
+  int red_side1 = countRedOnSide( pixels, SIDE1_CENTER );
+  int red_side2 = countRedOnSide( pixels, SIDE2_CENTER );
+
+  // Side 1 shows a dash pattern: some red, but not the whole 55-LED side (O gaps).
+  EXPECT_GT( red_side1, 0 );
+  EXPECT_LT( red_side1, static_cast<int>( LED_COUNT ) / 2 );
+  // Side 2 (healthy battery) untouched.
+  EXPECT_EQ( red_side2, 0 );
+}
+
+TEST( BatteryFaultEffectTest, OverlayLeavesBaseVisibleOnOffPositions )
+{
+  BatteryFaultEffect effect( LED_COUNT );
+  std::array<uint16_t, 8> bad = { 0, 4000, 4000, 4000, 4000, 4000, 4000, 4000 };
+  effect.updateBatteryState( bad, bad );
+
+  std::vector<Color> pixels( LED_COUNT, Color( 0, 80, 255 ) );
+  effect.render( pixels );
+
+  // O positions keep the blue base; X positions are red.
+  bool has_base = false;
+  for ( const auto &p : pixels ) {
+    if ( p == Color( 0, 80, 255 ) )
+      has_base = true;
+  }
+  EXPECT_TRUE( has_base );
+}
+
+TEST( BatteryFaultEffectTest, PatternInvertsAfterOneSecond )
+{
+  BatteryFaultEffect effect( LED_COUNT );
+  std::array<uint16_t, 8> bad = { 0, 4000, 4000, 4000, 4000, 4000, 4000, 4000 };
+  std::array<uint16_t, 8> ok = { 4000, 4000, 4000, 4000, 4000, 4000, 4000, 4000 };
+  effect.updateBatteryState( bad, ok );
+
+  std::vector<Color> before( LED_COUNT, Color( 0, 0, 0 ) );
+  effect.render( before );
+  EXPECT_FALSE( effect.inverted() );
+
+  // Just under a second: no swap yet.
+  effect.update( 0.9 );
+  EXPECT_FALSE( effect.inverted() );
+
+  // Crossing one second: X and O swap.
+  effect.update( 0.2 );
+  EXPECT_TRUE( effect.inverted() );
+
+  std::vector<Color> after( LED_COUNT, Color( 0, 0, 0 ) );
+  effect.render( after );
+
+  // Every LED on the side that was red is now off and vice versa.
+  double half_width = static_cast<double>( LED_COUNT ) / 4.0;
+  for ( size_t j = 0; j < LED_COUNT; ++j ) {
+    double diff = static_cast<double>( j ) - SIDE1_CENTER;
+    if ( std::abs( diff ) > half_width )
+      continue;
+    EXPECT_NE( before[j].r > 0, after[j].r > 0 );
+  }
 }
 
 // ============================================================================

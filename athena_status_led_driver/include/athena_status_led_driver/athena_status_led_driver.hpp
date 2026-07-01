@@ -25,6 +25,7 @@ class PowerSupplyEffect;
 class SpotLightEffect;
 class RainbowLoadingEffect;
 class BatteryConnectionEffect;
+class BatteryFaultEffect;
 
 class AthenaStatusLedDriver : public hector::Node
 {
@@ -67,6 +68,7 @@ private:
   std::shared_ptr<SpotLightEffect> spot_light_effect_;
   std::shared_ptr<RainbowLoadingEffect> rainbow_loading_effect_;
   std::shared_ptr<BatteryConnectionEffect> battery_connection_effect_;
+  std::shared_ptr<BatteryFaultEffect> battery_fault_effect_;
 
   // ROS interfaces
   rclcpp::Subscription<std_msgs::msg::String>::SharedPtr operating_mode_sub_;

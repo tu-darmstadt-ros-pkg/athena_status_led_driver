@@ -36,6 +36,7 @@ set(EFFECT_SOURCES
     src/effects/operating_mode_effect.cpp
     src/effects/battery_pulse_effect.cpp
     src/effects/battery_connection_effect.cpp
+    src/effects/battery_fault_effect.cpp
     src/effects/power_supply_effect.cpp
     src/effects/spot_light_effect.cpp)
 
