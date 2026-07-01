@@ -217,7 +217,8 @@ TEST( BatteryPulseEffectTest, PulseAdvancesPhaseOnlyIfLowBattery )
   effect.update( 0.1 );
   EXPECT_EQ( effect.phase(), before );
   effect.updateBatteryState( cells1, cells2 );
-  effect.update( 0.1 );
+  // The pulse only starts after the battery has been low for the debounce window.
+  effect.update( BatteryPulseEffect::MIN_LOW_DURATION_S );
   EXPECT_GT( effect.phase(), before );
 }
 
@@ -230,7 +231,9 @@ TEST( BatteryPulseEffectTest, RenderBlendsRed )
   std::array<uint16_t, 8> cells2 = { high, high, high, low, high, high, high, high };
   effect.updateBatteryState( cells1, cells2 );
 
-  // Advance to a point where pulse > 0
+  // Sit just under the debounce window (phase still pinned at 0)...
+  effect.update( BatteryPulseEffect::MIN_LOW_DURATION_S - 0.1 );
+  // ...then cross it and advance a quarter pulse to the sine peak.
   effect.update( 0.25 / BatteryPulseEffect::PULSE_FREQUENCY_HZ );
 
   std::vector<Color> pixels( LED_COUNT, Color( 0, 80, 255 ) );
@@ -1032,7 +1035,9 @@ TEST( IntegrationTest, FullPipelineLifecycle )
   // Phase 3: Enable low battery → red pulse
   std::array<uint16_t, 8> low = { 3500, 4000, 4000, 4000, 4000, 4000, 4000, 4000 };
   battery->updateBatteryState( low, low );
-  controller.tick( 0.25 / BatteryPulseEffect::PULSE_FREQUENCY_HZ ); // advance to get nonzero pulse
+  // Battery must stay low for the debounce window before the pulse appears...
+  controller.tick( BatteryPulseEffect::MIN_LOW_DURATION_S - 0.1 );
+  controller.tick( 0.25 / BatteryPulseEffect::PULSE_FREQUENCY_HZ ); // ...then advance to nonzero pulse
 
   bool has_red = false;
   for ( const auto &p : transport->lastFrame() ) {

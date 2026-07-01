@@ -22,6 +22,9 @@ public:
   static constexpr size_t CELLS_PER_BATTERY = 8;
   static constexpr double PULSE_FREQUENCY_HZ = 0.25; // pulses per second
   static constexpr float BRIGHTNESS = 0.2f;
+  /// Continuous low-voltage duration required before the pulse warning starts.
+  /// Avoids flickering when motors briefly draw the voltage down.
+  static constexpr double MIN_LOW_DURATION_S = 10.0;
 
   bool isActive() const override { return low_battery_; }
 
